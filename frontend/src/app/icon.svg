@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1c1f3a"/>
+      <stop offset="1" stop-color="#0b0d17"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="22" cy="18" r="34" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#8b7cf6" stop-opacity=".45"/>
+      <stop offset="1" stop-color="#8b7cf6" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="planet" x1="20" y1="18" x2="44" y2="46" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#b9afff"/>
+      <stop offset="1" stop-color="#6d5bea"/>
+    </linearGradient>
+    <clipPath id="front">
+      <!-- mitad delantera del anillo: pasa por delante del planeta -->
+      <rect x="0" y="32" width="64" height="32" transform="rotate(-22 32 32)"/>
+    </clipPath>
+  </defs>
+
+  <rect width="64" height="64" rx="15" fill="url(#bg)"/>
+  <rect width="64" height="64" rx="15" fill="url(#glow)"/>
+
+  <!-- anillo (parte de atrás) -->
+  <ellipse cx="32" cy="32" rx="25" ry="8.5" transform="rotate(-22 32 32)" fill="none" stroke="#2dd4bf" stroke-width="3.6" stroke-opacity=".55"/>
+  <!-- planeta -->
+  <circle cx="32" cy="32" r="14" fill="url(#planet)"/>
+  <circle cx="27" cy="26" r="5" fill="#fff" fill-opacity=".18"/>
+  <!-- anillo (parte de adelante) -->
+  <ellipse cx="32" cy="32" rx="25" ry="8.5" transform="rotate(-22 32 32)" fill="none" stroke="#2dd4bf" stroke-width="3.6" clip-path="url(#front)"/>
+  <!-- luna -->
+  <circle cx="52" cy="15" r="3.6" fill="#fbbf24"/>
+</svg>

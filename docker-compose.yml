@@ -1,0 +1,27 @@
+# Base de datos local para desarrollo.
+#   Levantar:  docker compose up -d
+#   Ver logs:  docker compose logs -f mongo
+#   Apagar:    docker compose down        (los datos quedan en el volumen)
+#   Borrar TODO (datos incluidos):  docker compose down -v
+name: orbitask
+
+services:
+  mongo:
+    image: mongo:8
+    container_name: orbitask-mongo
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:27017:27017" # solo accesible desde tu PC
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: orbitask
+      MONGO_INITDB_ROOT_PASSWORD: orbitask
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  mongo-data:
