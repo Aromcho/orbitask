@@ -17,6 +17,23 @@ export function formatMoney(amount: number, currency = DEFAULT_CURRENCY) {
   }
 }
 
+/**
+ * Monto escrito a mano → número. Acepta el formato argentino ("4.500", "4500,50")
+ * y el de punto decimal ("4500.5"). Devuelve NaN si no es un número.
+ */
+export function parseAmount(text: string) {
+  const clean = text.trim().replace(/[\s$]/g, "");
+  if (!clean) return NaN;
+  return Number(clean.includes(",") ? clean.replace(/\./g, "").replace(",", ".") : clean);
+}
+
+/** Lo que se va tipeando en el teclado de montos ("4500,5") → "4.500,5" para mostrar. */
+export function formatAmountInput(text: string) {
+  const [int, dec] = text.split(",");
+  const grouped = (int || "0").replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  return dec === undefined ? grouped : `${grouped},${dec}`;
+}
+
 /** Fecha local como 'YYYY-MM-DD' (lo que usa el backend para hábitos y finanzas). */
 export function toDay(date: Date) {
   return format(date, "yyyy-MM-dd");

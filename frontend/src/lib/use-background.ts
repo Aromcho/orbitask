@@ -5,6 +5,7 @@ import {
   BACKGROUND_CHANGE_EVENT,
   BACKGROUND_STORAGE_KEY,
   type BackgroundId,
+  backgroundMobileUrl,
   backgroundUrl,
   DEFAULT_BACKGROUND,
   isBackgroundId,
@@ -15,6 +16,7 @@ import {
 function applyBackground(id: BackgroundId) {
   const root = document.documentElement;
   root.style.setProperty("--bg-image", id === "none" ? "none" : `url("${backgroundUrl(id)}")`);
+  root.style.setProperty("--bg-image-mobile", id === "none" ? "none" : `url("${backgroundMobileUrl(id)}")`);
   if (isLightBackground(id)) root.dataset.bgTone = "light";
   else delete root.dataset.bgTone;
 }

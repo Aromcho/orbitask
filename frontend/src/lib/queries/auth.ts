@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../api";
+import { clearCache } from "../persist";
 import type { User } from "../types";
 
 export function useMe() {
@@ -15,6 +16,7 @@ export function login(email: string, password: string) {
 export async function logout() {
   await api("/auth/logout", { method: "POST" });
   // Recarga completa a propósito: limpia el cache de datos de la sesión anterior.
+  clearCache();
   // eslint-disable-next-line @next/next/no-location-assign-relative-destination
   window.location.href = "/login";
 }

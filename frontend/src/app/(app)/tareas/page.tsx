@@ -4,8 +4,10 @@ import { PlusIcon, SquareKanbanIcon } from "lucide-react";
 import { useState } from "react";
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
+import { PageTransition } from "@/components/page-transition";
 import { Board } from "@/components/tasks/board";
 import { ListDialog } from "@/components/tasks/list-dialog";
+import { MobileBoard } from "@/components/tasks/mobile-board";
 import { TaskDialog } from "@/components/tasks/task-dialog";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -38,10 +40,10 @@ export default function TareasPage() {
   const pending = tasks.filter((t) => !t.done).length;
 
   return (
-    <>
+    <PageTransition>
       <PageHeader
         title="Tareas"
-        description={lists?.length ? `${pending} pendientes · arrastrá las tarjetas entre listas` : undefined}
+        description={lists?.length ? `${pending} pendientes` : undefined}
         actions={
           lists?.length ? (
             <Button variant="outline" onClick={() => setListTarget("new")}>
@@ -53,11 +55,19 @@ export default function TareasPage() {
       />
 
       {loadingLists || loadingTasks ? (
-        <div className="flex gap-4">
-          {[0, 1, 2].map((i) => (
-            <Skeleton key={i} className="h-80 w-[300px] rounded-xl" />
-          ))}
-        </div>
+        <>
+          <div className="flex flex-col gap-2 md:hidden">
+            <Skeleton className="h-10 w-2/3 rounded-full" />
+            {[0, 1, 2, 3].map((i) => (
+              <Skeleton key={i} className="h-16 rounded-2xl" />
+            ))}
+          </div>
+          <div className="hidden gap-4 md:flex">
+            {[0, 1, 2].map((i) => (
+              <Skeleton key={i} className="h-80 w-[300px] rounded-xl" />
+            ))}
+          </div>
+        </>
       ) : !lists?.length ? (
         <div className="rounded-xl bg-card ring-1 ring-foreground/10 backdrop-blur-xl">
           <EmptyState
@@ -65,7 +75,7 @@ export default function TareasPage() {
             title="Tu tablero está vacío"
             description="Empezá con las listas clásicas o creá las tuyas."
             action={
-              <div className="flex gap-2">
+              <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
                 <Button onClick={() => createStarter.mutate()} disabled={createStarter.isPending}>
                   Crear Por hacer · En curso · Hecho
                 </Button>
@@ -77,11 +87,29 @@ export default function TareasPage() {
           />
         </div>
       ) : (
-        <Board lists={lists} tasks={tasks} onOpenTask={(t) => setOpenTaskId(t.id)} onEditList={setListTarget} />
+        <>
+          <div className="md:hidden">
+            <MobileBoard
+              lists={lists}
+              tasks={tasks}
+              onOpenTask={(t) => setOpenTaskId(t.id)}
+              onEditList={setListTarget}
+              onNewList={() => setListTarget("new")}
+            />
+          </div>
+          <div className="hidden md:block">
+            <p className="-mt-3 mb-3 text-sm text-muted-foreground">Arrastrá las tarjetas entre listas.</p>
+            <Board lists={lists} tasks={tasks} onOpenTask={(t) => setOpenTaskId(t.id)} onEditList={setListTarget} />
+          </div>
+        </>
       )}
 
-      <TaskDialog task={openTask} lists={lists ?? []} onClose={() => setOpenTaskId(null)} />
-      <ListDialog target={listTarget} onClose={() => setListTarget(null)} />
-    </>
+      <TaskDialog target={openTask} lists={lists ?? []} onClose={() => setOpenTaskId(null)} />
+      <ListDialog
+        target={listTarget}
+        taskCount={listTarget && listTarget !== "new" ? tasks.filter((t) => t.listId === listTarget.id).length : 0}
+        onClose={() => setListTarget(null)}
+      />
+    </PageTransition>
   );
 }

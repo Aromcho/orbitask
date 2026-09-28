@@ -18,6 +18,8 @@ frontend/src/
 ├── components/
 │   ├── ui/                  Componentes de shadcn (se agregan con `npx shadcn add …`)
 │   ├── week/  tasks/  habits/  finance/  wishlist/   Componentes de cada sección
+│   ├── mobile/              Barra inferior, el +, menú Más y filas deslizables (ver 05-mobile.md)
+│   ├── form/                Chips, atajos de fecha y pie de formulario
 │   └── app-sidebar.tsx, page-header.tsx, confirm-dialog.tsx…
 └── lib/
     ├── api.ts               fetch al backend + manejo de errores
@@ -50,7 +52,7 @@ Los hábitos y el tablero de tareas usan **actualizaciones optimistas**: la UI c
 ## Tema y colores
 
 Todos los colores están en [`globals.css`](../frontend/src/app/globals.css) como variables (`:root` para claro, `.dark` para oscuro).
-Arranca en oscuro. Se cambia desde el menú del usuario, abajo en el sidebar.
+Arranca en oscuro. Se cambia desde el menú del usuario, abajo en el sidebar (en el celu, desde **Más**).
 
 | Token | Oscuro | Uso |
 |---|---|---|
@@ -86,8 +88,8 @@ una capa más oscura encima (`.dark[data-bg-tone="light"]` en `globals.css`) par
 1. **Backend:** `nest g resource notas`, y armá el schema y los DTOs igual que en las otras secciones.
 2. **Tipos:** agregá la interfaz en `lib/types.ts`.
 3. **Hooks:** creá `lib/queries/notas.ts` copiando el patrón de `wishlist.ts`.
-4. **Página:** `app/(app)/notas/page.tsx` con `<PageHeader>` + tus componentes.
-5. **Menú:** sumá la entrada en `NAV` dentro de `components/app-sidebar.tsx` (ícono de [lucide.dev](https://lucide.dev)).
+4. **Página:** `app/(app)/notas/page.tsx` con `<PageTransition>` + `<PageHeader>` + tus componentes. Revisá las [reglas para el celu](05-mobile.md#reglas-para-lo-que-agregues).
+5. **Menú:** sumá la entrada en `NAV` dentro de `components/app-sidebar.tsx` (ícono de [lucide.dev](https://lucide.dev)) y, para el celu, en `MORE_SECTIONS` de `components/mobile/tabs.ts` más su tarjeta en `components/mobile/more-sheet.tsx`.
 6. ¿Necesitás un componente de UI? `npx shadcn@latest add <nombre>` (lista en [ui.shadcn.com](https://ui.shadcn.com/docs/components)).
 
 ## Comandos

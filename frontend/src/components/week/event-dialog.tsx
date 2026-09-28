@@ -1,19 +1,21 @@
 "use client";
 
-import { addHours, endOfDay, format, parseISO, startOfDay } from "date-fns";
-import { Loader2Icon, MapPinIcon, Trash2Icon } from "lucide-react";
+import { addHours, addMinutes, endOfDay, format, parseISO, startOfDay } from "date-fns";
+import { MapPinIcon } from "lucide-react";
 import { useState } from "react";
-import { ConfirmDialog } from "@/components/confirm-dialog";
-import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ChoiceChips } from "@/components/form/choice-chips";
+import { DateChips } from "@/components/form/date-chips";
+import { FormFooter } from "@/components/form/form-footer";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { useLastValue } from "@/hooks/use-last-value";
 import { EVENT_CATEGORIES } from "@/lib/constants";
 import { useDeleteEvent, useSaveEvent } from "@/lib/queries/events";
 import type { CalendarEvent, EventCategory } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
 /** Lo que abre el diálogo: un evento existente o un horario vacío. */
 export type EventDraft = { event: CalendarEvent } | { start: Date };
@@ -23,9 +25,23 @@ interface EventDialogProps {
   onClose: () => void;
 }
 
-export function EventDialog({ draft, onClose }: EventDialogProps) {
+const DURATIONS = [
+  { label: "30 min", minutes: 30 },
+  { label: "1 h", minutes: 60 },
+  { label: "1 h 30", minutes: 90 },
+  { label: "2 h", minutes: 120 },
+];
+
+const CATEGORY_OPTIONS = Object.entries(EVENT_CATEGORIES).map(([value, { label, color }]) => ({
+  value: value as EventCategory,
+  label,
+  color,
+}));
+
+export function EventDialog({ draft: current, onClose }: EventDialogProps) {
+  const draft = useLastValue(current);
   return (
-    <Dialog open={draft !== null} onOpenChange={(open) => !open && onClose()}>
+    <Dialog open={current !== null} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-md">
         {/* key: reinicia el formulario cada vez que se abre con otro evento */}
         {draft && <EventForm key={"event" in draft ? draft.event.id : draft.start.toISOString()} draft={draft} onDone={onClose} />}
@@ -51,6 +67,19 @@ function EventForm({ draft, onDone }: { draft: EventDraft; onDone: () => void })
   const save = useSaveEvent();
   const remove = useDeleteEvent();
   const invalidRange = !allDay && endTime <= startTime;
+
+  // Duración elegida con un chip: mueve el fin desde el inicio (sin pasar de medianoche)
+  const minutesBetween = (a: string, b: string) => {
+    const [ah, am] = a.split(":").map(Number);
+    const [bh, bm] = b.split(":").map(Number);
+    return bh * 60 + bm - (ah * 60 + am);
+  };
+  const duration = minutesBetween(startTime, endTime);
+  function applyDuration(minutes: number) {
+    const start = parseISO(`${date}T${startTime}`);
+    const end = addMinutes(start, minutes);
+    setEndTime(format(end, "yyyy-MM-dd") === date ? format(end, "HH:mm") : "23:59");
+  }
 
   function onSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -82,93 +111,100 @@ function EventForm({ draft, onDone }: { draft: EventDraft; onDone: () => void })
         value={title}
         onChange={(e) => setTitle(e.target.value)}
         placeholder="¿Qué tenés que hacer?"
-        className="h-11 text-base"
+        className="h-11 text-base touch:h-12"
+        enterKeyHint="done"
         required
-        autoFocus
+        autoFocus={!existing}
       />
 
-      <div className="grid grid-cols-[1fr_auto] items-end gap-3">
-        <div className="grid gap-2">
-          <Label htmlFor="event-date">Día</Label>
-          <Input id="event-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
-        </div>
-        <label className="flex h-9 items-center gap-2 text-sm">
-          <Switch checked={allDay} onCheckedChange={setAllDay} />
-          Todo el día
-        </label>
+      <div className="grid gap-2">
+        <Label htmlFor="event-date">Día</Label>
+        <DateChips id="event-date" value={date} onChange={(d) => d && setDate(d)} />
       </div>
 
+      <label className="flex items-center justify-between gap-3 text-sm">
+        Todo el día
+        <Switch checked={allDay} onCheckedChange={setAllDay} />
+      </label>
+
       {!allDay && (
-        <div className="grid grid-cols-2 gap-3">
-          <div className="grid gap-2">
-            <Label htmlFor="event-start">Empieza</Label>
-            <Input id="event-start" type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} required />
+        <div className="grid gap-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-2">
+              <Label htmlFor="event-start">Empieza</Label>
+              <Input
+                id="event-start"
+                type="time"
+                value={startTime}
+                onChange={(e) => {
+                  // Al mover el inicio, el evento conserva su duración
+                  const keep = duration > 0 ? duration : 60;
+                  setStartTime(e.target.value);
+                  if (e.target.value) {
+                    const end = addMinutes(parseISO(`${date}T${e.target.value}`), keep);
+                    setEndTime(format(end, "yyyy-MM-dd") === date ? format(end, "HH:mm") : "23:59");
+                  }
+                }}
+                required
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="event-end">Termina</Label>
+              <Input
+                id="event-end"
+                type="time"
+                value={endTime}
+                onChange={(e) => setEndTime(e.target.value)}
+                aria-invalid={invalidRange}
+                required
+              />
+            </div>
           </div>
-          <div className="grid gap-2">
-            <Label htmlFor="event-end">Termina</Label>
-            <Input
-              id="event-end"
-              type="time"
-              value={endTime}
-              onChange={(e) => setEndTime(e.target.value)}
-              aria-invalid={invalidRange}
-              required
-            />
+          {invalidRange && <p className="-mt-1 text-xs text-destructive">Tiene que terminar después de empezar.</p>}
+          <div className="flex flex-wrap gap-2" aria-label="Duración">
+            {DURATIONS.map((d) => (
+              <button
+                key={d.minutes}
+                type="button"
+                onClick={() => applyDuration(d.minutes)}
+                className={cn(
+                  "pressable h-8 rounded-full border border-input px-3 text-sm hover:bg-muted touch:h-9",
+                  duration === d.minutes && "border-primary/60 bg-primary/15 text-primary",
+                )}
+              >
+                {d.label}
+              </button>
+            ))}
           </div>
-          {invalidRange && <p className="col-span-2 -mt-1 text-xs text-destructive">Tiene que terminar después de empezar.</p>}
         </div>
       )}
 
       <div className="grid gap-2">
         <Label>Categoría</Label>
-        <Select value={category} onValueChange={(v) => setCategory(v as EventCategory)}>
-          <SelectTrigger className="w-full">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {Object.entries(EVENT_CATEGORIES).map(([key, { label, color }]) => (
-              <SelectItem key={key} value={key}>
-                <span className="size-2.5 rounded-full" style={{ backgroundColor: color }} />
-                {label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <ChoiceChips label="Categoría" value={category} onChange={setCategory} options={CATEGORY_OPTIONS} />
       </div>
 
       <div className="relative">
         <MapPinIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-        <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Lugar (opcional)" className="pl-9" />
+        <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Lugar (opcional)" className="pl-9 touch:pl-9" />
       </div>
 
-      <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notas" rows={3} />
+      <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notas" rows={2} />
 
-      <DialogFooter className="gap-2 sm:justify-between">
-        {existing ? (
-          <ConfirmDialog
-            title="¿Eliminar este evento?"
-            description={`"${existing.title}" se va a borrar de tu calendario.`}
-            onConfirm={() => remove.mutate(existing.id, { onSuccess: onDone })}
-            trigger={
-              <Button type="button" variant="destructive">
-                <Trash2Icon />
-                Eliminar
-              </Button>
-            }
-          />
-        ) : (
-          <span />
-        )}
-        <div className="flex gap-2">
-          <Button type="button" variant="ghost" onClick={onDone}>
-            Cancelar
-          </Button>
-          <Button type="submit" disabled={save.isPending || invalidRange || !title.trim()}>
-            {save.isPending && <Loader2Icon className="animate-spin" />}
-            Guardar
-          </Button>
-        </div>
-      </DialogFooter>
+      <FormFooter
+        onCancel={onDone}
+        pending={save.isPending}
+        disabled={invalidRange || !title.trim()}
+        remove={
+          existing
+            ? {
+                title: "¿Eliminar este evento?",
+                description: `"${existing.title}" se va a borrar de tu calendario.`,
+                onConfirm: () => remove.mutate(existing.id, { onSuccess: onDone }),
+              }
+            : undefined
+        }
+      />
     </form>
   );
 }

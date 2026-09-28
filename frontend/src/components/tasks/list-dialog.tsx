@@ -2,35 +2,42 @@
 
 import { useState } from "react";
 import { ColorPicker } from "@/components/color-picker";
-import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { FormFooter } from "@/components/form/form-footer";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useLastValue } from "@/hooks/use-last-value";
 import { SWATCHES } from "@/lib/constants";
-import { useCreateList, useUpdateList } from "@/lib/queries/tasks";
+import { useCreateList, useDeleteList, useUpdateList } from "@/lib/queries/tasks";
 import type { TaskList } from "@/lib/types";
 
 interface ListDialogProps {
   /** null = cerrado, "new" = crear, TaskList = editar */
   target: TaskList | "new" | null;
   onClose: () => void;
+  /** Cantidad de tareas de la lista (para avisar al borrarla). */
+  taskCount?: number;
 }
 
-export function ListDialog({ target, onClose }: ListDialogProps) {
+export function ListDialog({ target: current, onClose, taskCount }: ListDialogProps) {
+  const target = useLastValue(current);
   return (
-    <Dialog open={target !== null} onOpenChange={(open) => !open && onClose()}>
+    <Dialog open={current !== null} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-sm">
-        {target && <ListForm key={target === "new" ? "new" : target.id} list={target === "new" ? null : target} onDone={onClose} />}
+        {target && (
+          <ListForm key={target === "new" ? "new" : target.id} list={target === "new" ? null : target} taskCount={taskCount} onDone={onClose} />
+        )}
       </DialogContent>
     </Dialog>
   );
 }
 
-function ListForm({ list, onDone }: { list: TaskList | null; onDone: () => void }) {
+function ListForm({ list, taskCount = 0, onDone }: { list: TaskList | null; taskCount?: number; onDone: () => void }) {
   const [title, setTitle] = useState(list?.title ?? "");
   const [color, setColor] = useState(list?.color ?? SWATCHES[0]);
   const create = useCreateList();
   const update = useUpdateList();
+  const remove = useDeleteList();
 
   function onSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -46,20 +53,26 @@ function ListForm({ list, onDone }: { list: TaskList | null; onDone: () => void 
       </DialogHeader>
       <div className="grid gap-2">
         <Label htmlFor="list-title">Nombre</Label>
-        <Input id="list-title" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={60} required autoFocus />
+        <Input id="list-title" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={60} enterKeyHint="done" required autoFocus={!list} />
       </div>
       <div className="grid gap-2">
         <Label>Color</Label>
         <ColorPicker value={color} onChange={setColor} />
       </div>
-      <DialogFooter>
-        <Button type="button" variant="ghost" onClick={onDone}>
-          Cancelar
-        </Button>
-        <Button type="submit" disabled={!title.trim() || create.isPending || update.isPending}>
-          Guardar
-        </Button>
-      </DialogFooter>
+      <FormFooter
+        onCancel={onDone}
+        pending={create.isPending || update.isPending}
+        disabled={!title.trim()}
+        remove={
+          list
+            ? {
+                title: `¿Eliminar "${list.title}"?`,
+                description: taskCount ? `También se borran sus ${taskCount} tareas.` : "La lista está vacía.",
+                onConfirm: () => remove.mutate(list.id, { onSuccess: onDone }),
+              }
+            : undefined
+        }
+      />
     </form>
   );
 }

@@ -1,13 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { FormFooter } from "@/components/form/form-footer";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useCategories, useSaveRecurring } from "@/lib/queries/finance";
+import { Switch } from "@/components/ui/switch";
+import { useLastValue } from "@/hooks/use-last-value";
+import { parseAmount } from "@/lib/format";
+import { useCategories, useDeleteRecurring, useSaveRecurring } from "@/lib/queries/finance";
 import type { MovementType, Recurring } from "@/lib/types";
+import { CategoryGrid } from "./category-grid";
 import { TypeToggle } from "./type-toggle";
 
 interface RecurringDialogProps {
@@ -15,9 +18,10 @@ interface RecurringDialogProps {
   onClose: () => void;
 }
 
-export function RecurringDialog({ target, onClose }: RecurringDialogProps) {
+export function RecurringDialog({ target: current, onClose }: RecurringDialogProps) {
+  const target = useLastValue(current);
   return (
-    <Dialog open={target !== null} onOpenChange={(open) => !open && onClose()}>
+    <Dialog open={current !== null} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-md">
         {target && <RecurringForm key={target === "new" ? "new" : target.id} item={target === "new" ? null : target} onDone={onClose} />}
       </DialogContent>
@@ -28,19 +32,24 @@ export function RecurringDialog({ target, onClose }: RecurringDialogProps) {
 function RecurringForm({ item, onDone }: { item: Recurring | null; onDone: () => void }) {
   const { data: categories = [] } = useCategories();
   const [type, setType] = useState<MovementType>(item?.type ?? "expense");
-  const [amount, setAmount] = useState(item ? String(item.amount) : "");
+  const [amount, setAmount] = useState(item ? String(item.amount).replace(".", ",") : "");
   const [categoryId, setCategoryId] = useState(item?.categoryId ?? "");
   const [dayOfMonth, setDayOfMonth] = useState(String(item?.dayOfMonth ?? 1));
   const [note, setNote] = useState(item?.note ?? "");
+  const [active, setActive] = useState(item?.active ?? true);
   const save = useSaveRecurring();
+  const remove = useDeleteRecurring();
 
   const options = categories.filter((c) => c.type === type);
   const validCategory = options.some((c) => c.id === categoryId);
+  const value = parseAmount(amount);
+  const day = Number(dayOfMonth);
+  const validDay = Number.isInteger(day) && day >= 1 && day <= 28;
 
   function onSubmit(event: React.FormEvent) {
     event.preventDefault();
     save.mutate(
-      { id: item?.id, type, amount: Number(amount), categoryId, dayOfMonth: Number(dayOfMonth), note: note.trim() },
+      { id: item?.id, type, amount: Math.round(value * 100) / 100, categoryId, dayOfMonth: day, note: note.trim(), active },
       { onSuccess: onDone },
     );
   }
@@ -56,45 +65,63 @@ function RecurringForm({ item, onDone }: { item: Recurring | null; onDone: () =>
 
       <div className="grid gap-2">
         <Label htmlFor="rec-note">Nombre</Label>
-        <Input id="rec-note" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Ej: Netflix" maxLength={200} required />
+        <Input id="rec-note" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Ej: Netflix" maxLength={200} enterKeyHint="next" required />
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-[1fr_7rem] gap-3">
         <div className="grid gap-2">
           <Label htmlFor="rec-amount">Monto</Label>
-          <Input id="rec-amount" type="number" min="0.01" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} required />
+          <Input
+            id="rec-amount"
+            inputMode="decimal"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value.replace(/[^\d.,]/g, ""))}
+            placeholder="0"
+            className="tabular"
+            required
+          />
         </div>
         <div className="grid gap-2">
           <Label htmlFor="rec-day">Día del mes</Label>
-          <Input id="rec-day" type="number" min={1} max={28} value={dayOfMonth} onChange={(e) => setDayOfMonth(e.target.value)} required />
+          <Input
+            id="rec-day"
+            inputMode="numeric"
+            value={dayOfMonth}
+            onChange={(e) => setDayOfMonth(e.target.value.replace(/\D/g, "").slice(0, 2))}
+            aria-invalid={dayOfMonth !== "" && !validDay}
+            className="tabular"
+            required
+          />
         </div>
       </div>
+      {dayOfMonth !== "" && !validDay && <p className="-mt-2 text-xs text-destructive">Elegí un día entre 1 y 28 (así existe en todos los meses).</p>}
 
       <div className="grid gap-2">
         <Label>Categoría</Label>
-        <Select value={validCategory ? categoryId : ""} onValueChange={setCategoryId}>
-          <SelectTrigger className="w-full">
-            <SelectValue placeholder="Elegí una" />
-          </SelectTrigger>
-          <SelectContent>
-            {options.map((c) => (
-              <SelectItem key={c.id} value={c.id}>
-                <span>{c.emoji}</span>
-                {c.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <CategoryGrid categories={options} value={categoryId} onChange={setCategoryId} />
       </div>
 
-      <DialogFooter>
-        <Button type="button" variant="ghost" onClick={onDone}>
-          Cancelar
-        </Button>
-        <Button type="submit" disabled={save.isPending || !validCategory || !(Number(amount) > 0)}>
-          Guardar
-        </Button>
-      </DialogFooter>
+      {item && (
+        <label className="flex items-center justify-between gap-3 text-sm">
+          Activo (se genera cada mes)
+          <Switch checked={active} onCheckedChange={setActive} />
+        </label>
+      )}
+
+      <FormFooter
+        onCancel={onDone}
+        pending={save.isPending}
+        disabled={!validCategory || !(value > 0) || !validDay}
+        remove={
+          item
+            ? {
+                title: `¿Eliminar "${item.note}"?`,
+                description: "Los movimientos que ya se generaron no se borran.",
+                onConfirm: () => remove.mutate(item.id, { onSuccess: onDone }),
+              }
+            : undefined
+        }
+      />
     </form>
   );
 }

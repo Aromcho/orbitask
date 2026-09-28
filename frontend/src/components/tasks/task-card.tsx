@@ -23,7 +23,7 @@ export function TaskCard({ task, onOpen, onToggleDone, overlay }: TaskCardProps)
   return (
     <div
       className={cn(
-        "group flex cursor-grab touch-none flex-col gap-2 rounded-lg border bg-popover/80 p-3 text-sm shadow-sm transition-colors select-none hover:border-primary/40 active:cursor-grabbing",
+        "group flex cursor-grab touch-manipulation flex-col gap-2 rounded-lg border bg-popover/80 p-3 text-sm shadow-sm transition-colors select-none hover:border-primary/40 active:cursor-grabbing",
         overlay && "rotate-2 border-primary/50 shadow-xl shadow-primary/20",
       )}
       onClick={() => onOpen?.(task)}

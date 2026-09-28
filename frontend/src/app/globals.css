@@ -3,6 +3,8 @@
 @import "shadcn/tailwind.css";
 
 @custom-variant dark (&:is(.dark *));
+/* Pantallas táctiles (celu, tablet): objetivos más grandes sin cambiar el escritorio */
+@custom-variant touch (@media (pointer: coarse));
 
 @theme inline {
   --color-background: var(--background);
@@ -151,6 +153,12 @@
   * {
     @apply border-border outline-ring/50;
   }
+  html {
+    @apply font-sans;
+    -webkit-text-size-adjust: 100%;
+    /* En táctil el feedback lo dan los estados :active, no el recuadro gris del navegador */
+    -webkit-tap-highlight-color: transparent;
+  }
   body {
     @apply bg-background text-foreground;
   }
@@ -158,8 +166,12 @@
   [role="button"]:not(:disabled) {
     cursor: pointer;
   }
-  html {
-    @apply font-sans;
+  /* Sin la demora de doble toque para zoom en botones y links */
+  a,
+  button,
+  [role="button"],
+  label {
+    touch-action: manipulation;
   }
   h1,
   h2,
@@ -168,28 +180,59 @@
   }
 }
 
+/* Instalada como app (PWA): sin el rebote que deja ver el fondo al tirar de más */
+@media (display-mode: standalone) {
+  html,
+  body {
+    overscroll-behavior-y: none;
+  }
+}
+
+/*
+ * En el celu el vidrio es más liviano: menos blur (el scroll no se traba en
+ * Androids de gama media) y tarjetas un poco más opacas para compensar.
+ */
+@media (pointer: coarse) {
+  :root {
+    --blur-xl: 10px;
+    --blur-2xl: 12px;
+    --glass-blur: 10px;
+    --card: rgb(255 255 255 / 0.86);
+  }
+  .dark {
+    --card: rgb(20 22 38 / 0.84);
+  }
+}
+
 /*
  * Fondo de la app. --bg-image la setea el selector de fondos (lib/background.ts);
- * por defecto es "none" y se ven solo los degradados.
+ * por defecto es "none" y se ven solo los degradados. En el celu (vertical) se usa
+ * --bg-image-mobile: un recorte vertical, mucho más liviano.
  */
 .orbitask-bg {
+  --bg-layer: var(--bg-image, none);
   position: fixed;
   inset: 0;
   z-index: -1;
   background:
     linear-gradient(to bottom, var(--bg-overlay-top), var(--bg-overlay-bottom)),
-    var(--bg-image, none) center / cover no-repeat,
+    var(--bg-layer) center / cover no-repeat,
     radial-gradient(55% 45% at 12% 8%, rgb(139 124 246 / 0.32), transparent 70%),
     radial-gradient(45% 40% at 88% 92%, rgb(45 212 191 / 0.16), transparent 70%),
     radial-gradient(35% 30% at 70% 20%, rgb(251 113 133 / 0.1), transparent 70%),
     var(--background);
 }
+@media (max-width: 767px) and (orientation: portrait) {
+  .orbitask-bg {
+    --bg-layer: var(--bg-image-mobile, var(--bg-image, none));
+  }
+}
 
 /* Panel de vidrio: se usa en tarjetas, sidebar y diálogos */
 @utility glass {
   background: var(--glass);
-  backdrop-filter: blur(18px) saturate(140%);
-  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  backdrop-filter: blur(var(--glass-blur, 18px)) saturate(140%);
+  -webkit-backdrop-filter: blur(var(--glass-blur, 18px)) saturate(140%);
 }
 
 /* Números alineados (montos, horas, rachas) */
@@ -197,8 +240,97 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Zonas seguras del celu (notch arriba, barra de inicio abajo) */
+@utility pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
+@utility pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Filas horizontales que se desplazan con el dedo, sin barra visible */
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Respuesta al toque: se hunde apenas al presionar (solo en táctil) */
+@utility pressable {
+  transition: transform 160ms cubic-bezier(0.2, 0, 0, 1), background-color 160ms;
+  @media (pointer: coarse) {
+    &:active {
+      transform: scale(0.97);
+    }
+  }
+}
+
 /* Scrollbar discreta */
 * {
   scrollbar-width: thin;
   scrollbar-color: rgb(139 124 246 / 0.3) transparent;
+}
+
+/* ---------- Transiciones entre pestañas (barra inferior) ---------- */
+::view-transition {
+  pointer-events: none;
+}
+::view-transition-old(.tab-forward) {
+  --slide-offset: -28px;
+  animation:
+    120ms ease-in both vt-fade reverse,
+    260ms cubic-bezier(0.2, 0, 0, 1) both vt-slide reverse;
+}
+::view-transition-new(.tab-forward) {
+  --slide-offset: 28px;
+  animation:
+    200ms ease-out 80ms both vt-fade,
+    260ms cubic-bezier(0.2, 0, 0, 1) both vt-slide;
+}
+::view-transition-old(.tab-back) {
+  --slide-offset: 28px;
+  animation:
+    120ms ease-in both vt-fade reverse,
+    260ms cubic-bezier(0.2, 0, 0, 1) both vt-slide reverse;
+}
+::view-transition-new(.tab-back) {
+  --slide-offset: -28px;
+  animation:
+    200ms ease-out 80ms both vt-fade,
+    260ms cubic-bezier(0.2, 0, 0, 1) both vt-slide;
+}
+@keyframes vt-fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes vt-slide {
+  from {
+    translate: var(--slide-offset) 0;
+  }
+}
+
+/* ---------- Celebración al completar el día ---------- */
+@keyframes confetti-fall {
+  0% {
+    transform: translate3d(0, 0, 0) rotate(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translate3d(var(--dx), var(--dy), 0) rotate(var(--rot));
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(*),
+  ::view-transition-new(*),
+  ::view-transition-group(*) {
+    animation-duration: 0s !important;
+    animation-delay: 0s !important;
+  }
+  .pressable:active {
+    transform: none;
+  }
 }

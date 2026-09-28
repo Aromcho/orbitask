@@ -1,7 +1,8 @@
 "use client";
 
 import { format, isToday, parseISO, setHours, setMinutes, startOfDay } from "date-fns";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
+import { useNow } from "@/hooks/use-now";
 import { EVENT_CATEGORIES } from "@/lib/constants";
 import { capitalize, fmt } from "@/lib/format";
 import type { CalendarEvent } from "@/lib/types";
@@ -172,16 +173,6 @@ function EventChip({ event, onClick }: { event: CalendarEvent; onClick: () => vo
       {event.title}
     </button>
   );
-}
-
-/** Hora actual, actualizada cada minuto (para la línea de "ahora"). */
-function useNow() {
-  const [now, setNow] = useState(() => new Date());
-  useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), 60_000);
-    return () => clearInterval(id);
-  }, []);
-  return now;
 }
 
 export function weekTitle(days: Date[]) {

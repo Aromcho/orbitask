@@ -1,3 +1,5 @@
+import { clearCache } from "./persist";
+
 /** Error con el status HTTP y el mensaje que devolvió el backend. */
 export class ApiError extends Error {
   constructor(
@@ -28,6 +30,7 @@ export async function api<T>(path: string, { method = "GET", body, query }: Requ
 
   if (res.status === 401 && path !== "/auth/login") {
     // Recarga completa a propósito: limpia el cache de datos de la sesión anterior.
+    clearCache();
     // eslint-disable-next-line @next/next/no-location-assign-relative-destination
     window.location.href = "/login";
     throw new ApiError(401, "Tu sesión venció");

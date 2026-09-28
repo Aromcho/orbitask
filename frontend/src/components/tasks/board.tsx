@@ -8,7 +8,8 @@ import {
   DragOverlay,
   type DragStartEvent,
   KeyboardSensor,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   useDroppable,
   useSensor,
   useSensors,
@@ -56,8 +57,11 @@ export function Board({ lists, tasks, onOpenTask, onEditList }: BoardProps) {
   const columns = dragColumns ?? serverColumns;
 
   const tasksById = useMemo(() => new Map(tasks.map((t) => [t.id, t])), [tasks]);
+  // Con mouse se arrastra al moverse 6 px. Con el dedo hay que mantener apretado:
+  // así deslizar sobre una tarjeta scrollea en vez de arrastrarla.
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 

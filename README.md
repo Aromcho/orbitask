@@ -44,16 +44,19 @@ Abrí **http://localhost:3000** y entrá con `ADMIN_EMAIL` / `ADMIN_PASSWORD` de
 | **Finanzas** | Ingresos/gastos, gráfico diario, gastos por categoría y movimientos recurrentes |
 | **Deseos** | Pegás un link y arma la tarjeta con foto, título y precio |
 
+En el celu tiene su propia versión: barra inferior, un **+** para cargar cualquier cosa en dos toques y formularios que suben desde abajo. Se instala como app en el iPhone. Ver [docs/05-mobile.md](docs/05-mobile.md).
+
 ## Guías
 
 1. [Instalación del entorno](docs/01-instalacion.md): Node, Docker, MongoDB, herramientas
 2. [Cómo está hecho el backend](docs/02-backend.md): tour por NestJS con el código real
 3. [NestJS Observe](docs/03-observe.md): qué mirar en el dashboard y el laboratorio de experimentos
 4. [Cómo está hecho el frontend](docs/04-frontend.md): estructura, tema de colores y cómo agregar cosas
+5. [Orbitask en el celu](docs/05-mobile.md): usarla desde el iPhone, instalarla como app y cómo está hecha la versión mobile
 
 ## Fondos de pantalla
 
-Menú del usuario (abajo en el sidebar) → **Fondo de pantalla**. Hay 6 incluidos: Burbujas, Amatista, Fibra óptica, Gemas, Prisma y Spider-Verse.
+Menú del usuario (abajo en el sidebar; en el celu, **Más**) → **Fondo de pantalla**. Hay 6 incluidos: Burbujas, Amatista, Fibra óptica, Gemas, Prisma y Spider-Verse.
 Por defecto no hay imagen: se ve el degradado violeta. La elección se guarda en cada navegador.
 
 Para sumar uno propio, ver [docs/04-frontend.md](docs/04-frontend.md#fondos-de-pantalla).

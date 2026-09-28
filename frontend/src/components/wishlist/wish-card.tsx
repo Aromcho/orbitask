@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { PRIORITIES } from "@/lib/constants";
 import { formatMoney } from "@/lib/format";
+import { haptic } from "@/lib/haptics";
 import { useDeleteWish, useRefreshWish, useSaveWish } from "@/lib/queries/wishlist";
 import type { Wish } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -26,37 +27,37 @@ export function WishCard({ wish, onEdit }: { wish: Wish; onEdit: () => void }) {
       )}
     >
       <button type="button" onClick={onEdit} className="relative block text-left" aria-label={`Editar ${wish.title}`}>
-        <WishImage src={wish.image} alt={wish.title} className={cn("aspect-[4/3] w-full", wish.purchased && "grayscale")} />
+        <WishImage src={wish.image} alt={wish.title} className={cn("aspect-square w-full sm:aspect-[4/3]", wish.purchased && "grayscale")} />
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
-        <span className="absolute top-3 left-3 flex items-center gap-1.5 rounded-full bg-black/55 px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur-md">
+        <span className="absolute top-2 left-2 flex items-center gap-1.5 rounded-full bg-black/55 px-2 py-0.5 text-[10px] font-semibold text-white backdrop-blur-md sm:top-3 sm:left-3 sm:px-2.5 sm:py-1 sm:text-[11px]">
           <span className={cn("size-1.5 rounded-full", PRIORITY_DOT[wish.priority])} />
           {PRIORITIES[wish.priority].label}
         </span>
         {wish.siteName && (
-          <span className="absolute bottom-3 left-3 max-w-[70%] truncate rounded-full bg-black/45 px-2.5 py-1 text-[11px] text-white backdrop-blur-md">
+          <span className="absolute bottom-3 left-3 hidden max-w-[70%] truncate rounded-full bg-black/45 px-2.5 py-1 text-[11px] text-white backdrop-blur-md sm:block">
             {wish.siteName}
           </span>
         )}
         {wish.purchased && (
-          <span className="absolute top-3 right-3 flex items-center gap-1 rounded-full bg-income px-2.5 py-1 text-[11px] font-semibold text-black/80">
+          <span className="absolute top-2 right-2 flex items-center gap-1 rounded-full bg-income px-2 py-0.5 text-[10px] font-semibold text-black/80 sm:top-3 sm:right-3 sm:px-2.5 sm:py-1 sm:text-[11px]">
             <CheckIcon className="size-3" strokeWidth={3} />
             Comprado
           </span>
         )}
       </button>
 
-      <div className="flex flex-1 flex-col gap-3 p-4">
+      <div className="flex flex-1 flex-col gap-2 p-3 sm:gap-3 sm:p-4">
         <div className="flex-1">
-          <h3 className="line-clamp-2 font-sans leading-snug font-medium">{wish.title}</h3>
-          {wish.notes && <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{wish.notes}</p>}
+          <h3 className="line-clamp-2 font-sans text-sm leading-snug font-medium sm:text-base">{wish.title}</h3>
+          {wish.notes && <p className="mt-1 line-clamp-2 hidden text-xs text-muted-foreground sm:block">{wish.notes}</p>}
         </div>
 
         <div className="flex items-center gap-1">
-          <p className="flex-1 font-heading text-xl font-semibold tabular">
+          <p className="min-w-0 flex-1 truncate font-heading text-base font-semibold tabular sm:text-xl">
             {wish.price !== null ? formatMoney(wish.price, wish.currency) : <span className="text-sm font-normal text-muted-foreground">Sin precio</span>}
           </p>
           {wish.url && (
-            <Button variant="ghost" size="icon-sm" asChild>
+            <Button variant="ghost" size="icon-sm" className="max-sm:hidden" asChild>
               <a href={wish.url} target="_blank" rel="noopener noreferrer" aria-label="Abrir en la tienda">
                 <ExternalLinkIcon />
               </a>
@@ -69,10 +70,23 @@ export function WishCard({ wish, onEdit }: { wish: Wish; onEdit: () => void }) {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => save.mutate({ id: wish.id, purchased: !wish.purchased })}>
+              <DropdownMenuItem
+                onClick={() => {
+                  haptic();
+                  save.mutate({ id: wish.id, purchased: !wish.purchased });
+                }}
+              >
                 <CheckIcon />
                 {wish.purchased ? "Marcar como pendiente" : "¡Lo compré!"}
               </DropdownMenuItem>
+              {wish.url && (
+                <DropdownMenuItem asChild className="sm:hidden">
+                  <a href={wish.url} target="_blank" rel="noopener noreferrer">
+                    <ExternalLinkIcon />
+                    Ver en la tienda
+                  </a>
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem onClick={onEdit}>
                 <PencilIcon />
                 Editar

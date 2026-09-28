@@ -20,15 +20,22 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { EmptyState } from "@/components/empty-state";
 import { CategoryDialog } from "@/components/finance/category-dialog";
 import { CategoryBreakdown, DailyExpenseChart } from "@/components/finance/charts";
+import { MonthHero } from "@/components/finance/month-hero";
 import { RecurringDialog } from "@/components/finance/recurring-dialog";
 import { TransactionDialog } from "@/components/finance/transaction-dialog";
+import { SwipeRow } from "@/components/mobile/swipe-row";
 import { PageHeader } from "@/components/page-header";
+import { PageTransition } from "@/components/page-transition";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { api } from "@/lib/api";
 import { capitalize, fmt, formatMoney, toMonth } from "@/lib/format";
 import {
+  SUMMARY_KEY,
+  TRANSACTIONS_KEY,
   useCategories,
   useDeleteCategory,
   useDeleteRecurring,
@@ -38,8 +45,11 @@ import {
   useSummary,
   useTransactions,
 } from "@/lib/queries/finance";
-import type { Category, Recurring, Transaction } from "@/lib/types";
+import { useUndoableDelete } from "@/lib/queries/undo";
+import type { Category, MovementType, Recurring, Transaction } from "@/lib/types";
 import { cn } from "@/lib/utils";
+
+const NEW_EXPENSE = { new: "expense" as MovementType };
 
 export default function FinanzasPage() {
   const [cursor, setCursor] = useState(() => new Date());
@@ -47,13 +57,13 @@ export default function FinanzasPage() {
   const isCurrentMonth = month === toMonth(new Date());
 
   const { data: summary } = useSummary(month);
-  const { data: transactions = [] } = useTransactions(month);
+  const { data: transactions = [], isLoading: loadingTransactions } = useTransactions(month);
   const { data: categories = [] } = useCategories();
 
-  const [txTarget, setTxTarget] = useState<Transaction | "new" | null>(null);
+  const [txTarget, setTxTarget] = useState<Transaction | { new: MovementType } | null>(null);
 
   return (
-    <>
+    <PageTransition>
       <PageHeader
         title="Finanzas"
         description={capitalize(fmt(cursor, "MMMM yyyy"))}
@@ -70,21 +80,46 @@ export default function FinanzasPage() {
                 <ChevronRightIcon />
               </Button>
             </div>
-            <Button onClick={() => setTxTarget("new")}>
+            <Button onClick={() => setTxTarget(NEW_EXPENSE)}>
               <PlusIcon />
               Movimiento
             </Button>
           </>
         }
+        mobileActions={
+          <div className="flex items-center rounded-xl bg-card ring-1 ring-foreground/10 backdrop-blur-xl">
+            <Button variant="ghost" size="icon-sm" aria-label="Mes anterior" onClick={() => setCursor((d) => addMonths(d, -1))}>
+              <ChevronLeftIcon />
+            </Button>
+            <button
+              type="button"
+              onClick={() => setCursor(new Date())}
+              disabled={isCurrentMonth}
+              aria-label="Volver a este mes"
+              className="min-w-[5.75rem] text-center text-sm font-semibold capitalize tabular"
+            >
+              {fmt(cursor, "MMM yyyy")}
+            </button>
+            <Button variant="ghost" size="icon-sm" aria-label="Mes siguiente" onClick={() => setCursor((d) => addMonths(d, 1))}>
+              <ChevronRightIcon />
+            </Button>
+          </div>
+        }
       />
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      {/* Celu: el mes en una tarjeta */}
+      <div className="md:hidden">
+        <MonthHero key={month} summary={summary} isCurrentMonth={isCurrentMonth} />
+      </div>
+
+      {/* Escritorio: KPIs y gráficos */}
+      <div className="hidden gap-4 md:grid md:grid-cols-3">
         <Kpi label="Ingresos" value={summary?.income ?? 0} icon={ArrowDownLeftIcon} tone="income" />
         <Kpi label="Gastos" value={summary?.expense ?? 0} icon={ArrowUpRightIcon} tone="expense" />
         <Kpi label="Balance" value={summary?.balance ?? 0} icon={ScaleIcon} tone={(summary?.balance ?? 0) >= 0 ? "income" : "expense"} />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-5">
+      <div className="hidden gap-4 md:grid lg:grid-cols-5">
         <Card className="lg:col-span-3">
           <CardHeader>
             <CardTitle>Gasto diario</CardTitle>
@@ -114,13 +149,17 @@ export default function FinanzasPage() {
       </div>
 
       <Tabs defaultValue="movimientos">
-        <TabsList>
+        <TabsList className="w-full md:w-fit">
           <TabsTrigger value="movimientos">Movimientos</TabsTrigger>
           <TabsTrigger value="recurrentes">Recurrentes</TabsTrigger>
           <TabsTrigger value="categorias">Categorías</TabsTrigger>
         </TabsList>
         <TabsContent value="movimientos">
-          <TransactionsList transactions={transactions} categories={categories} onOpen={setTxTarget} onNew={() => setTxTarget("new")} />
+          {loadingTransactions ? (
+            <Skeleton className="h-64 rounded-2xl" />
+          ) : (
+            <TransactionsList transactions={transactions} categories={categories} onOpen={setTxTarget} onNew={() => setTxTarget(NEW_EXPENSE)} />
+          )}
         </TabsContent>
         <TabsContent value="recurrentes">
           <RecurringPanel categories={categories} />
@@ -131,7 +170,7 @@ export default function FinanzasPage() {
       </Tabs>
 
       <TransactionDialog target={txTarget} onClose={() => setTxTarget(null)} />
-    </>
+    </PageTransition>
   );
 }
 
@@ -165,6 +204,12 @@ function TransactionsList({ transactions, categories, onOpen, onNew }: Transacti
     for (const tx of transactions) map.set(tx.date, [...(map.get(tx.date) ?? []), tx]);
     return [...map.entries()];
   }, [transactions]);
+  const removeTx = useUndoableDelete<Transaction>({
+    queryKey: TRANSACTIONS_KEY,
+    request: (id) => api(`/finance/transactions/${id}`, { method: "DELETE" }),
+    message: "Movimiento eliminado",
+    invalidate: [SUMMARY_KEY],
+  });
 
   if (transactions.length === 0) {
     return (
@@ -180,44 +225,56 @@ function TransactionsList({ transactions, categories, onOpen, onNew }: Transacti
   }
 
   return (
-    <Card className="py-2">
-      {groups.map(([date, items]) => (
-        <div key={date}>
-          <p className="px-4 pt-3 pb-1 text-xs font-medium text-muted-foreground">{capitalize(fmt(date, "EEEE d 'de' MMMM"))}</p>
-          <ul>
-            {items.map((tx) => {
-              const category = byId.get(tx.categoryId);
-              return (
-                <li key={tx.id}>
-                  <button
-                    type="button"
-                    onClick={() => onOpen(tx)}
-                    className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-foreground/[0.04]"
-                  >
-                    <span
-                      className="flex size-9 shrink-0 items-center justify-center rounded-xl text-base"
-                      style={{ backgroundColor: `${category?.color ?? "#94a3b8"}26` }}
+    // overflow-visible: los encabezados de cada día quedan pegados arriba al scrollear
+    <Card className="gap-0 overflow-visible py-1">
+      {groups.map(([date, items]) => {
+        const dayTotal = items.reduce((sum, tx) => sum + (tx.type === "income" ? tx.amount : -tx.amount), 0);
+        return (
+          <div key={date}>
+            <p className="sticky top-[calc(env(safe-area-inset-top)+3rem)] z-10 flex items-center justify-between bg-popover/90 px-4 py-2 text-xs font-medium text-muted-foreground backdrop-blur-md md:static md:bg-transparent md:pt-3 md:pb-1 md:backdrop-blur-none">
+              {capitalize(fmt(date, "EEEE d 'de' MMMM"))}
+              <span className="tabular md:hidden">{dayTotal >= 0 ? "+" : "−"} {formatMoney(Math.abs(dayTotal))}</span>
+            </p>
+            <ul>
+              {items.map((tx) => {
+                const category = byId.get(tx.categoryId);
+                return (
+                  <li key={tx.id}>
+                    <SwipeRow
+                      className="rounded-none"
+                      actions={[{ label: "Borrar", icon: <Trash2Icon className="size-5" />, className: "bg-expense text-black/80", onClick: () => removeTx(tx.id) }]}
                     >
-                      {category?.emoji ?? "💸"}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium">{tx.note || category?.name || "Movimiento"}</p>
-                      <p className="flex items-center gap-1 text-xs text-muted-foreground">
-                        {category?.name}
-                        {tx.recurringId && <RepeatIcon className="size-3" aria-label="Recurrente" />}
-                      </p>
-                    </div>
-                    <span className={cn("font-heading font-semibold tabular", tx.type === "income" ? "text-income" : "text-foreground")}>
-                      {tx.type === "income" ? "+" : "−"}
-                      {formatMoney(tx.amount)}
-                    </span>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      ))}
+                      <button
+                        type="button"
+                        onClick={() => onOpen(tx)}
+                        className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-foreground/[0.04] active:bg-foreground/[0.06] touch:py-3"
+                      >
+                        <span
+                          className="flex size-10 shrink-0 items-center justify-center rounded-xl text-lg"
+                          style={{ backgroundColor: `${category?.color ?? "#94a3b8"}26` }}
+                        >
+                          {category?.emoji ?? "💸"}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium touch:text-[15px]">{tx.note || category?.name || "Movimiento"}</p>
+                          <p className="flex items-center gap-1 text-xs text-muted-foreground">
+                            {category?.name}
+                            {tx.recurringId && <RepeatIcon className="size-3" aria-label="Recurrente" />}
+                          </p>
+                        </div>
+                        <span className={cn("font-heading font-semibold tabular", tx.type === "income" ? "text-income" : "text-foreground")}>
+                          {tx.type === "income" ? "+" : "−"}
+                          {formatMoney(tx.amount)}
+                        </span>
+                      </button>
+                    </SwipeRow>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        );
+      })}
     </Card>
   );
 }
@@ -234,14 +291,14 @@ function RecurringPanel({ categories }: { categories: Category[] }) {
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-start justify-between gap-4">
+      <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
         <div>
           <CardTitle>Movimientos recurrentes</CardTitle>
           <CardDescription>
             Se generan solos cada mes (06:00). Gastos fijos activos: <span className="font-medium text-foreground">{formatMoney(monthlyExpense)}</span>
           </CardDescription>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 max-sm:w-full max-sm:*:flex-1">
           <Button
             variant="outline"
             size="sm"
@@ -269,31 +326,39 @@ function RecurringPanel({ categories }: { categories: Category[] }) {
             {items.map((item) => {
               const category = byId.get(item.categoryId);
               return (
-                <li key={item.id} className={cn("flex items-center gap-3 px-4 py-3", !item.active && "opacity-50")}>
-                  <span className="w-12 shrink-0 text-center">
-                    <span className="block text-[10px] text-muted-foreground uppercase">día</span>
-                    <span className="font-heading text-lg font-semibold tabular">{item.dayOfMonth}</span>
-                  </span>
-                  <span className="text-lg">{category?.emoji}</span>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">{item.note}</p>
-                    <p className="text-xs text-muted-foreground">{category?.name}</p>
+                <li key={item.id} className={cn("flex items-center gap-3 pr-4", !item.active && "opacity-50")}>
+                  {/* Toda la fila abre el formulario (ahí están activo y eliminar en el celu) */}
+                  <button type="button" onClick={() => setTarget(item)} className="flex min-w-0 flex-1 items-center gap-3 py-3 pl-4 text-left active:bg-foreground/[0.04]">
+                    <span className="w-10 shrink-0 text-center">
+                      <span className="block text-[10px] text-muted-foreground uppercase">día</span>
+                      <span className="font-heading text-lg font-semibold tabular">{item.dayOfMonth}</span>
+                    </span>
+                    <span className="text-lg">{category?.emoji}</span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-medium">{item.note}</span>
+                      <span className="block truncate text-xs text-muted-foreground">
+                        {category?.name}
+                        {!item.active && " · pausado"}
+                      </span>
+                    </span>
+                    <span className={cn("font-heading font-semibold tabular", item.type === "income" && "text-income")}>{formatMoney(item.amount)}</span>
+                  </button>
+                  <div className="hidden items-center gap-1 md:flex">
+                    <Switch checked={item.active} onCheckedChange={(active) => save.mutate({ id: item.id, active })} aria-label="Activo" />
+                    <Button variant="ghost" size="icon-sm" aria-label="Editar" onClick={() => setTarget(item)}>
+                      <PencilIcon />
+                    </Button>
+                    <ConfirmDialog
+                      title={`¿Eliminar "${item.note}"?`}
+                      description="Los movimientos que ya se generaron no se borran."
+                      onConfirm={() => remove.mutate(item.id)}
+                      trigger={
+                        <Button variant="ghost" size="icon-sm" aria-label="Eliminar">
+                          <Trash2Icon />
+                        </Button>
+                      }
+                    />
                   </div>
-                  <span className={cn("font-heading font-semibold tabular", item.type === "income" && "text-income")}>{formatMoney(item.amount)}</span>
-                  <Switch checked={item.active} onCheckedChange={(active) => save.mutate({ id: item.id, active })} aria-label="Activo" />
-                  <Button variant="ghost" size="icon-sm" aria-label="Editar" onClick={() => setTarget(item)}>
-                    <PencilIcon />
-                  </Button>
-                  <ConfirmDialog
-                    title={`¿Eliminar "${item.note}"?`}
-                    description="Los movimientos que ya se generaron no se borran."
-                    onConfirm={() => remove.mutate(item.id)}
-                    trigger={
-                      <Button variant="ghost" size="icon-sm" aria-label="Eliminar">
-                        <Trash2Icon />
-                      </Button>
-                    }
-                  />
                 </li>
               );
             })}
@@ -314,7 +379,7 @@ function CategoriesPanel({ categories }: { categories: Category[] }) {
       <CardHeader className="flex flex-row items-start justify-between gap-4">
         <div>
           <CardTitle>Categorías</CardTitle>
-          <CardDescription>Solo podés borrar las que no tienen movimientos.</CardDescription>
+          <CardDescription>Tocá una para editarla. Solo se pueden borrar las que no tienen movimientos.</CardDescription>
         </div>
         <Button size="sm" onClick={() => setTarget("new")}>
           <PlusIcon />
@@ -329,19 +394,19 @@ function CategoriesPanel({ categories }: { categories: Category[] }) {
               {categories
                 .filter((c) => c.type === type)
                 .map((c) => (
-                  <li key={c.id} className="group flex items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-foreground/[0.04]">
-                    <span className="flex size-8 items-center justify-center rounded-lg" style={{ backgroundColor: `${c.color}26` }}>
-                      {c.emoji}
-                    </span>
-                    <span className="flex-1 text-sm">{c.name}</span>
-                    <Button variant="ghost" size="icon-xs" className="opacity-0 group-hover:opacity-100" aria-label="Editar" onClick={() => setTarget(c)}>
-                      <PencilIcon />
-                    </Button>
+                  <li key={c.id} className="group flex items-center gap-1 rounded-lg hover:bg-foreground/[0.04]">
+                    <button type="button" onClick={() => setTarget(c)} className="flex min-w-0 flex-1 items-center gap-3 px-2 py-1.5 text-left touch:py-2">
+                      <span className="flex size-8 shrink-0 items-center justify-center rounded-lg touch:size-10" style={{ backgroundColor: `${c.color}26` }}>
+                        {c.emoji}
+                      </span>
+                      <span className="flex-1 truncate text-sm">{c.name}</span>
+                    </button>
+                    {/* Borrar rápido con el mouse; en el celu está dentro del formulario */}
                     <ConfirmDialog
                       title={`¿Eliminar "${c.name}"?`}
                       onConfirm={() => remove.mutate(c.id)}
                       trigger={
-                        <Button variant="ghost" size="icon-xs" className="opacity-0 group-hover:opacity-100" aria-label="Eliminar">
+                        <Button variant="ghost" size="icon-xs" className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 touch:hidden" aria-label={`Eliminar ${c.name}`}>
                           <Trash2Icon />
                         </Button>
                       }

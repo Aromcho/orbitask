@@ -21,5 +21,7 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   // Todo menos la API, los assets de Next y los archivos de /public.
-  matcher: ["/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:png|jpg|jpeg|webp|svg|ico)$).*)"],
+  // El manifest y los íconos tienen que quedar afuera: el celu los pide sin la cookie
+  // de sesión y, si se los redirige al login, no ofrece instalar la app.
+  matcher: ["/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:png|jpg|jpeg|webp|svg|ico|webmanifest)$).*)"],
 };

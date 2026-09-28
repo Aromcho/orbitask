@@ -17,8 +17,11 @@ export interface TaskInput {
   done?: boolean;
 }
 
+/** Opciones de la query de listas (también sirve para queryClient.fetchQuery). */
+export const taskListsQuery = { queryKey: TASK_LISTS_KEY, queryFn: () => api<TaskList[]>("/task-lists") };
+
 export function useTaskLists() {
-  return useQuery({ queryKey: TASK_LISTS_KEY, queryFn: () => api<TaskList[]>("/task-lists") });
+  return useQuery(taskListsQuery);
 }
 
 export function useTasks() {

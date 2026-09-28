@@ -1,29 +1,34 @@
 "use client";
 
-import { addDays, format, isAfter, isToday, startOfToday, startOfWeek } from "date-fns";
-import { CheckIcon, FlameIcon, MoreHorizontalIcon, PencilIcon, PlusIcon, TrophyIcon, Trash2Icon } from "lucide-react";
+import { addDays, format, isAfter, isSameDay, isToday, startOfToday, startOfWeek } from "date-fns";
+import { CheckIcon, FlameIcon, MoreHorizontalIcon, PencilIcon, PlusIcon, Trash2Icon, TrophyIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { EmptyState } from "@/components/empty-state";
+import { HabitCard } from "@/components/habits/habit-card";
 import { HabitDialog } from "@/components/habits/habit-dialog";
 import { HabitHeatmap, HeatmapLegend } from "@/components/habits/habit-heatmap";
 import { PageHeader } from "@/components/page-header";
+import { PageTransition } from "@/components/page-transition";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
+import { celebrateIfDayComplete } from "@/lib/celebrate";
 import { fmt, toDay, weekDays } from "@/lib/format";
+import { haptic } from "@/lib/haptics";
 import { useCheckins, useDeleteHabit, useHabits, useToggleCheckin } from "@/lib/queries/habits";
 import type { Habit } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const HEATMAP_WEEKS = 26;
+const HEATMAP_WEEKS_MOBILE = 16;
 
 export default function HabitosPage() {
   const today = startOfToday();
   const days = weekDays(today);
   const heatmapStart = addDays(startOfWeek(today, { weekStartsOn: 1 }), -(HEATMAP_WEEKS - 1) * 7);
+  const heatmapStartMobile = addDays(startOfWeek(today, { weekStartsOn: 1 }), -(HEATMAP_WEEKS_MOBILE - 1) * 7);
 
   const { data: habits, isLoading } = useHabits();
   const { data: checkins = [] } = useCheckins(toDay(heatmapStart), toDay(days[6]));
@@ -48,9 +53,18 @@ export default function HabitosPage() {
     (sum, h) => sum + days.filter((d) => !isAfter(d, today) && h.days.includes(d.getDay()) && done.has(`${h.id}:${toDay(d)}`)).length,
     0,
   );
+  const weekPercent = weekScheduled ? Math.round((weekDone / weekScheduled) * 100) : 0;
+
+  function onToggle(habit: Habit, day: Date) {
+    const checking = !done.has(`${habit.id}:${toDay(day)}`);
+    toggle.mutate({ habitId: habit.id, date: toDay(day) });
+    // Si con este check se completa el día (solo hoy y hábitos que tocan hoy), festejamos
+    if (checking && isSameDay(day, today) && habit.days.includes(today.getDay())) celebrateIfDayComplete(doneToday + 1, dueToday.length);
+    else haptic();
+  }
 
   return (
-    <>
+    <PageTransition>
       <PageHeader
         title="Hábitos"
         description={list.length ? `${doneToday} de ${dueToday.length} hechos hoy` : "Construí rachas, un día a la vez."}
@@ -63,7 +77,11 @@ export default function HabitosPage() {
       />
 
       {isLoading ? (
-        <Skeleton className="h-72 rounded-xl" />
+        <div className="flex flex-col gap-3">
+          <Skeleton className="h-20 rounded-2xl" />
+          <Skeleton className="h-28 rounded-2xl" />
+          <Skeleton className="h-28 rounded-2xl" />
+        </div>
       ) : list.length === 0 ? (
         <Card>
           <EmptyState
@@ -75,29 +93,38 @@ export default function HabitosPage() {
         </Card>
       ) : (
         <>
-          <div className="grid gap-4 sm:grid-cols-3">
-            <StatCard label="Hoy" value={`${doneToday}/${dueToday.length}`} progress={dueToday.length ? (doneToday / dueToday.length) * 100 : 0} />
-            <StatCard
-              label="Esta semana"
-              value={`${weekScheduled ? Math.round((weekDone / weekScheduled) * 100) : 0}%`}
-              progress={weekScheduled ? (weekDone / weekScheduled) * 100 : 0}
-            />
-            <Card size="sm">
-              <CardContent className="flex items-center gap-3">
-                <div className="flex size-11 items-center justify-center rounded-xl bg-streak/15 text-streak">
+          <div className="grid grid-cols-3 gap-2.5 sm:gap-4">
+            <StatCard label="Hoy" value={`${doneToday}/${dueToday.length}`} progress={dueToday.length ? doneToday / dueToday.length : 0} color="var(--primary)" />
+            <StatCard label="Semana" value={`${weekPercent}%`} progress={weekPercent / 100} color="var(--income)" />
+            <Card size="sm" className="justify-center">
+              <CardContent className="flex flex-col items-center gap-1.5 text-center sm:flex-row sm:gap-3 sm:text-left">
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-streak/15 text-streak sm:size-11">
                   <TrophyIcon className="size-5" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-xs text-muted-foreground">Mejor racha activa</p>
-                  <p className="truncate font-heading text-lg font-semibold">
-                    {best && best.currentStreak > 0 ? `${best.emoji} ${best.currentStreak} días` : "—"}
-                  </p>
+                  <p className="text-xs text-muted-foreground">Mejor racha</p>
+                  <p className="truncate font-heading text-lg font-semibold tabular">{best && best.currentStreak > 0 ? `${best.currentStreak} d` : "—"}</p>
                 </div>
               </CardContent>
             </Card>
           </div>
 
-          <Card className="py-0">
+          {/* Celu: una tarjeta por hábito */}
+          <div className="flex flex-col gap-2.5 md:hidden">
+            {list.map((habit) => (
+              <HabitCard
+                key={habit.id}
+                habit={habit}
+                days={days}
+                isDone={(d) => done.has(`${habit.id}:${toDay(d)}`)}
+                onToggle={(d) => onToggle(habit, d)}
+                onEdit={() => setTarget(habit)}
+              />
+            ))}
+          </div>
+
+          {/* Escritorio: tabla de la semana */}
+          <Card className="hidden py-0 md:flex">
             <div className="overflow-x-auto">
               <table className="w-full min-w-[640px] border-collapse text-sm">
                 <thead>
@@ -120,7 +147,7 @@ export default function HabitosPage() {
                       habit={habit}
                       days={days}
                       isDone={(d) => done.has(`${habit.id}:${toDay(d)}`)}
-                      onToggle={(d) => toggle.mutate({ habitId: habit.id, date: toDay(d) })}
+                      onToggle={(d) => onToggle(habit, d)}
                       onEdit={() => setTarget(habit)}
                     />
                   ))}
@@ -130,34 +157,48 @@ export default function HabitosPage() {
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-end justify-between gap-4">
+            <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
               <div>
-                <CardTitle>Últimos {Math.round(HEATMAP_WEEKS / 4.3)} meses</CardTitle>
+                <CardTitle>
+                  <span className="md:hidden">Últimas {HEATMAP_WEEKS_MOBILE} semanas</span>
+                  <span className="hidden md:inline">Últimos {Math.round(HEATMAP_WEEKS / 4.3)} meses</span>
+                </CardTitle>
                 <CardDescription>Cada cuadrito es un día: cuanto más intenso, más hábitos cumpliste.</CardDescription>
               </div>
               <HeatmapLegend />
             </CardHeader>
             <CardContent>
-              <HabitHeatmap start={heatmapStart} weeks={HEATMAP_WEEKS} habits={list} doneByDay={doneByDay} />
+              <div className="md:hidden">
+                <HabitHeatmap start={heatmapStartMobile} weeks={HEATMAP_WEEKS_MOBILE} habits={list} doneByDay={doneByDay} fluid />
+              </div>
+              <div className="hidden md:block">
+                <HabitHeatmap start={heatmapStart} weeks={HEATMAP_WEEKS} habits={list} doneByDay={doneByDay} />
+              </div>
             </CardContent>
           </Card>
         </>
       )}
 
       <HabitDialog target={target} onClose={() => setTarget(null)} />
-    </>
+    </PageTransition>
   );
 }
 
-function StatCard({ label, value, progress }: { label: string; value: string; progress: number }) {
+/** Dato con un anillo de progreso (0 a 1). */
+function StatCard({ label, value, progress, color }: { label: string; value: string; progress: number; color: string }) {
+  const degrees = Math.round(Math.min(1, Math.max(0, progress)) * 360);
   return (
-    <Card size="sm">
-      <CardContent className="flex flex-col gap-2">
-        <div className="flex items-baseline justify-between">
+    <Card size="sm" className="justify-center">
+      <CardContent className="flex flex-col items-center gap-1.5 text-center sm:flex-row sm:gap-3 sm:text-left">
+        <span
+          aria-hidden
+          className="size-10 shrink-0 rounded-full transition-[background] duration-500 [mask:radial-gradient(circle,transparent_55%,#000_57%)] sm:size-11"
+          style={{ background: `conic-gradient(${color} ${degrees}deg, color-mix(in oklab, var(--foreground) 10%, transparent) 0)` }}
+        />
+        <div className="min-w-0">
           <p className="text-xs text-muted-foreground">{label}</p>
           <p className="font-heading text-lg font-semibold tabular">{value}</p>
         </div>
-        <Progress value={progress} className="h-1.5" />
       </CardContent>
     </Card>
   );

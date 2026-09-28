@@ -31,7 +31,7 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="flex min-h-svh items-center justify-center p-4">
+    <main className="flex min-h-svh items-center justify-center px-4 pt-[calc(env(safe-area-inset-top)+1rem)] pb-[calc(env(safe-area-inset-bottom)+1rem)]">
       <Card className="w-full max-w-sm shadow-2xl shadow-primary/10">
         <CardHeader className="items-center text-center">
           <LogoMark className="mx-auto mb-2 size-14" />
@@ -42,14 +42,26 @@ export default function LoginPage() {
           <form onSubmit={onSubmit} className="flex flex-col gap-4">
             <div className="grid gap-2">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" name="email" type="email" autoComplete="email" required autoFocus />
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                inputMode="email"
+                autoComplete="email"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                enterKeyHint="next"
+                required
+                autoFocus
+              />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="password">Contraseña</Label>
-              <Input id="password" name="password" type="password" autoComplete="current-password" required />
+              <Input id="password" name="password" type="password" autoComplete="current-password" enterKeyHint="go" required />
             </div>
             {error && <p className="text-sm text-destructive">{error}</p>}
-            <Button type="submit" size="lg" disabled={loading}>
+            <Button type="submit" size="lg" className="mt-1" disabled={loading}>
               {loading && <Loader2Icon className="animate-spin" />}
               Entrar
             </Button>

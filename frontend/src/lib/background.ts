@@ -32,12 +32,17 @@ export function backgroundUrl(id: BackgroundId) {
   return `/backgrounds/${id}.webp`;
 }
 
+/** Recorte vertical (9:16) para el celu: <id>-mobile.webp, mucho más liviano. */
+export function backgroundMobileUrl(id: BackgroundId) {
+  return `/backgrounds/${id}-mobile.webp`;
+}
+
 /**
  * Script que corre antes de pintar la página, para que el fondo guardado
  * aparezca de entrada (sin "parpadeo").
  */
 export const backgroundInitScript = `try{var b=localStorage.getItem(${JSON.stringify(BACKGROUND_STORAGE_KEY)});if(${JSON.stringify(
   BACKGROUNDS.map((b) => b.id).filter((id) => id !== "none"),
-)}.indexOf(b)>-1){var d=document.documentElement;d.style.setProperty("--bg-image",'url("/backgrounds/'+b+'.webp")');if(${JSON.stringify(
+)}.indexOf(b)>-1){var d=document.documentElement;d.style.setProperty("--bg-image",'url("/backgrounds/'+b+'.webp")');d.style.setProperty("--bg-image-mobile",'url("/backgrounds/'+b+'-mobile.webp")');if(${JSON.stringify(
   BACKGROUNDS.filter((b) => "light" in b && b.light).map((b) => b.id),
 )}.indexOf(b)>-1)d.dataset.bgTone="light"}}catch(e){}`;

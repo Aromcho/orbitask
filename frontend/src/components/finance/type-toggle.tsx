@@ -17,7 +17,7 @@ export function TypeToggle({ value, onChange }: { value: MovementType; onChange:
           onClick={() => onChange(type)}
           aria-pressed={value === type}
           className={cn(
-            "flex items-center justify-center gap-2 rounded-lg py-2 text-sm font-medium text-muted-foreground transition-colors",
+            "flex items-center justify-center gap-2 rounded-lg py-2 text-sm font-medium text-muted-foreground transition-colors touch:py-2.5 touch:text-[0.95rem]",
             value === type && cn("ring-1", active),
           )}
         >
