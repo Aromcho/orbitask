@@ -7,6 +7,7 @@ import { AuthController } from './auth.controller.js';
 import { AuthGuard } from './auth.guard.js';
 import { AuthService } from './auth.service.js';
 import { User, UserSchema } from './user.schema.js';
+import { UsersController } from './users.controller.js';
 
 @Module({
   imports: [
@@ -19,7 +20,7 @@ import { User, UserSchema } from './user.schema.js';
       }),
     }),
   ],
-  controllers: [AuthController],
+  controllers: [AuthController, UsersController],
   providers: [
     AuthService,
     // Registra el guard para TODA la app.

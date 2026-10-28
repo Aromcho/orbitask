@@ -16,6 +16,7 @@ import { WishImage } from "@/components/wishlist/wish-image";
 import { useNow } from "@/hooks/use-now";
 import { celebrateIfDayComplete } from "@/lib/celebrate";
 import { EVENT_CATEGORIES, PRIORITIES } from "@/lib/constants";
+import { CarryOverLine } from "@/components/finance/month-hero";
 import { capitalize, fmt, formatMoney, toDay, toMonth } from "@/lib/format";
 import { haptic } from "@/lib/haptics";
 import { useMe } from "@/lib/queries/auth";
@@ -289,10 +290,11 @@ function MonthMoney() {
         ) : (
           <>
             <div>
-              <p className="text-xs text-muted-foreground">Balance</p>
-              <p className={cn("font-heading text-3xl font-semibold tabular", summary.balance < 0 ? "text-expense" : "text-income")}>
-                {formatMoney(summary.balance)}
+              <p className="text-xs text-muted-foreground">Disponible</p>
+              <p className={cn("font-heading text-3xl font-semibold tabular", summary.available < 0 ? "text-expense" : "text-income")}>
+                {formatMoney(summary.available)}
               </p>
+              <CarryOverLine summary={summary} className="text-xs" />
             </div>
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div className="rounded-lg bg-income/10 px-3 py-2">

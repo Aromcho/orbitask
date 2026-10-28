@@ -2,6 +2,7 @@
 
 import { PlusIcon } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 import { DateChips } from "@/components/form/date-chips";
 import { FormFooter } from "@/components/form/form-footer";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -11,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useLastValue } from "@/hooks/use-last-value";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { haptic } from "@/lib/haptics";
-import { parseAmount, todayDay } from "@/lib/format";
+import { capitalize, fmt, parseAmount, todayDay } from "@/lib/format";
 import { useCategories, useDeleteTransaction, useSaveTransaction } from "@/lib/queries/finance";
 import type { MovementType, Transaction } from "@/lib/types";
 import { AmountDisplay, AmountPad } from "./amount-pad";
@@ -70,6 +71,12 @@ function TransactionForm({ tx, newType, onDone }: { tx: Transaction | null; newT
       {
         onSuccess: () => {
           haptic();
+          // Si cae en otro mes, no se ve en el mes actual: avisamos dónde quedó.
+          if (date.slice(0, 7) !== todayDay().slice(0, 7)) {
+            toast.success(`Guardado en ${capitalize(fmt(date, "MMMM yyyy"))}`, {
+              description: "Cambiá de mes en Finanzas para verlo.",
+            });
+          }
           onDone();
         },
       },

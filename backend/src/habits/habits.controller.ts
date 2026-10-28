@@ -1,5 +1,7 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query } from '@nestjs/common';
 import { ParseObjectIdPipe } from '@nestjs/mongoose';
+import { CurrentUser } from '../auth/current-user.decorator.js';
+import type { JwtPayload } from '../auth/auth.types.js';
 import {
   CheckinsRangeQueryDto,
   CreateHabitDto,
@@ -13,35 +15,35 @@ export class HabitsController {
   constructor(private readonly habits: HabitsService) {}
 
   @Get()
-  findAll() {
-    return this.habits.findAll();
+  findAll(@CurrentUser() user: JwtPayload) {
+    return this.habits.findAll(user.sub);
   }
 
   // Va antes de ':id' para que "checkins" no se interprete como un id.
   @Get('checkins')
-  findCheckins(@Query() query: CheckinsRangeQueryDto) {
-    return this.habits.findCheckins(query);
+  findCheckins(@CurrentUser() user: JwtPayload, @Query() query: CheckinsRangeQueryDto) {
+    return this.habits.findCheckins(user.sub, query);
   }
 
   @Post()
-  create(@Body() dto: CreateHabitDto) {
-    return this.habits.create(dto);
+  create(@CurrentUser() user: JwtPayload, @Body() dto: CreateHabitDto) {
+    return this.habits.create(user.sub, dto);
   }
 
   @Patch(':id')
-  update(@Param('id', ParseObjectIdPipe) id: string, @Body() dto: UpdateHabitDto) {
-    return this.habits.update(id, dto);
+  update(@CurrentUser() user: JwtPayload, @Param('id', ParseObjectIdPipe) id: string, @Body() dto: UpdateHabitDto) {
+    return this.habits.update(user.sub, id, dto);
   }
 
   @Delete(':id')
   @HttpCode(204)
-  remove(@Param('id', ParseObjectIdPipe) id: string) {
-    return this.habits.remove(id);
+  remove(@CurrentUser() user: JwtPayload, @Param('id', ParseObjectIdPipe) id: string) {
+    return this.habits.remove(user.sub, id);
   }
 
   @Post(':id/toggle')
   @HttpCode(200)
-  toggle(@Param('id', ParseObjectIdPipe) id: string, @Body() dto: ToggleCheckinDto) {
-    return this.habits.toggle(id, dto.date);
+  toggle(@CurrentUser() user: JwtPayload, @Param('id', ParseObjectIdPipe) id: string, @Body() dto: ToggleCheckinDto) {
+    return this.habits.toggle(user.sub, id, dto.date);
   }
 }

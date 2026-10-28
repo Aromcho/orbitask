@@ -16,42 +16,42 @@ export class HabitsService {
     @InjectModel(HabitCheckin.name) private readonly checkins: Model<HabitCheckin>,
   ) {}
 
-  findAll() {
-    return this.habits.find({ archived: false }).sort({ position: 1, createdAt: 1 });
+  findAll(userId: string) {
+    return this.habits.find({ userId, archived: false }).sort({ position: 1, createdAt: 1 });
   }
 
-  async create(dto: CreateHabitDto) {
-    const position = await this.habits.countDocuments({ archived: false });
-    return this.habits.create({ ...dto, position });
+  async create(userId: string, dto: CreateHabitDto) {
+    const position = await this.habits.countDocuments({ userId, archived: false });
+    return this.habits.create({ ...dto, userId, position });
   }
 
-  async update(id: string, dto: UpdateHabitDto) {
-    const habit = await this.findOne(id);
+  async update(userId: string, id: string, dto: UpdateHabitDto) {
+    const habit = await this.findOne(userId, id);
     habit.set(dto);
     // Si cambiaron los días, la racha puede cambiar.
     if (dto.days) await this.recalculateStreak(habit);
     return habit.save();
   }
 
-  async remove(id: string) {
-    const habit = await this.habits.findByIdAndDelete(id);
+  async remove(userId: string, id: string) {
+    const habit = await this.habits.findOneAndDelete({ _id: id, userId });
     if (!habit) throw new NotFoundException('Hábito no encontrado');
     await this.checkins.deleteMany({ habitId: habit._id });
   }
 
-  findCheckins({ from, to }: CheckinsRangeQueryDto) {
-    return this.checkins.find({ date: { $gte: from, $lte: to } });
+  findCheckins(userId: string, { from, to }: CheckinsRangeQueryDto) {
+    return this.checkins.find({ userId, date: { $gte: from, $lte: to } });
   }
 
   /** Marca o desmarca un día. Devuelve el estado nuevo y la racha actualizada. */
-  async toggle(id: string, date: string) {
+  async toggle(userId: string, id: string, date: string) {
     if (date > todayISO()) {
       throw new BadRequestException('No podés marcar días futuros');
     }
-    const habit = await this.findOne(id);
+    const habit = await this.findOne(userId, id);
 
     const removed = await this.checkins.findOneAndDelete({ habitId: habit._id, date });
-    if (!removed) await this.checkins.create({ habitId: habit._id, date });
+    if (!removed) await this.checkins.create({ userId: habit.userId, habitId: habit._id, date });
 
     await this.recalculateStreak(habit);
     await habit.save();
@@ -92,8 +92,8 @@ export class HabitsService {
     habit.bestStreak = Math.max(habit.bestStreak, streak);
   }
 
-  private async findOne(id: string) {
-    const habit = await this.habits.findById(id);
+  private async findOne(userId: string, id: string) {
+    const habit = await this.habits.findOne({ _id: id, userId });
     if (!habit) throw new NotFoundException('Hábito no encontrado');
     return habit;
   }

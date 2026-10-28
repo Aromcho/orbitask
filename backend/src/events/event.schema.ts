@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import type { HydratedDocument } from 'mongoose';
+import { type HydratedDocument, SchemaTypes, Types } from 'mongoose';
 import { baseSchemaOptions } from '../common/schema-options.js';
 
 export const EVENT_CATEGORIES = ['personal', 'trabajo', 'salud', 'social', 'estudio', 'otro'] as const;
@@ -7,6 +7,10 @@ export type EventCategory = (typeof EVENT_CATEGORIES)[number];
 
 @Schema(baseSchemaOptions)
 export class CalendarEvent {
+  /** Dueño: cada usuario ve solo lo suyo. */
+  @Prop({ type: SchemaTypes.ObjectId, ref: 'User', required: true, index: true })
+  userId: Types.ObjectId;
+
   @Prop({ required: true, trim: true })
   title: string;
 

@@ -20,6 +20,7 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { EmptyState } from "@/components/empty-state";
 import { CategoryDialog } from "@/components/finance/category-dialog";
 import { CategoryBreakdown, DailyExpenseChart } from "@/components/finance/charts";
+import { CarryPrompt } from "@/components/finance/carry-prompt";
 import { MonthHero } from "@/components/finance/month-hero";
 import { RecurringDialog } from "@/components/finance/recurring-dialog";
 import { TransactionDialog } from "@/components/finance/transaction-dialog";
@@ -107,6 +108,8 @@ export default function FinanzasPage() {
         }
       />
 
+      {isCurrentMonth && <CarryPrompt summary={summary} />}
+
       {/* Celu: el mes en una tarjeta */}
       <div className="md:hidden">
         <MonthHero key={month} summary={summary} isCurrentMonth={isCurrentMonth} />
@@ -116,7 +119,13 @@ export default function FinanzasPage() {
       <div className="hidden gap-4 md:grid md:grid-cols-3">
         <Kpi label="Ingresos" value={summary?.income ?? 0} icon={ArrowDownLeftIcon} tone="income" />
         <Kpi label="Gastos" value={summary?.expense ?? 0} icon={ArrowUpRightIcon} tone="expense" />
-        <Kpi label="Balance" value={summary?.balance ?? 0} icon={ScaleIcon} tone={(summary?.balance ?? 0) >= 0 ? "income" : "expense"} />
+        <Kpi
+          label="Disponible"
+          value={summary?.available ?? 0}
+          icon={ScaleIcon}
+          tone={(summary?.available ?? 0) >= 0 ? "income" : "expense"}
+          hint={summary && summary.carryOver !== 0 ? `Incluye ${formatMoney(summary.carryOver)} de meses anteriores` : undefined}
+        />
       </div>
 
       <div className="hidden gap-4 md:grid lg:grid-cols-5">
@@ -174,7 +183,7 @@ export default function FinanzasPage() {
   );
 }
 
-function Kpi({ label, value, icon: Icon, tone }: { label: string; value: number; icon: typeof WalletIcon; tone: "income" | "expense" }) {
+function Kpi({ label, value, icon: Icon, tone, hint }: { label: string; value: number; icon: typeof WalletIcon; tone: "income" | "expense"; hint?: string }) {
   return (
     <Card size="sm">
       <CardContent className="flex items-center gap-4">
@@ -184,6 +193,7 @@ function Kpi({ label, value, icon: Icon, tone }: { label: string; value: number;
         <div className="min-w-0">
           <p className="text-xs text-muted-foreground">{label}</p>
           <p className="truncate font-heading text-2xl font-semibold tabular">{formatMoney(value)}</p>
+          {hint && <p className="truncate text-xs text-muted-foreground">{hint}</p>}
         </div>
       </CardContent>
     </Card>

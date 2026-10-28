@@ -15,59 +15,67 @@ export class TasksService {
 
   // ---------- Listas (columnas del tablero) ----------
 
-  findLists() {
-    return this.lists.find().sort({ position: 1, createdAt: 1 });
+  findLists(userId: string) {
+    return this.lists.find({ userId }).sort({ position: 1, createdAt: 1 });
   }
 
-  async createList(dto: CreateTaskListDto) {
-    const position = await this.lists.countDocuments();
-    return this.lists.create({ ...dto, position });
+  async createList(userId: string, dto: CreateTaskListDto) {
+    const position = await this.lists.countDocuments({ userId });
+    return this.lists.create({ ...dto, userId, position });
   }
 
-  async updateList(id: string, dto: UpdateTaskListDto) {
-    const list = await this.lists.findByIdAndUpdate(id, dto, { returnDocument: 'after' });
+  async updateList(userId: string, id: string, dto: UpdateTaskListDto) {
+    const list = await this.lists.findOneAndUpdate({ _id: id, userId }, dto, { returnDocument: 'after' });
     if (!list) throw new NotFoundException('Lista no encontrada');
     return list;
   }
 
-  async removeList(id: string) {
-    const list = await this.lists.findByIdAndDelete(id);
+  async removeList(userId: string, id: string) {
+    const list = await this.lists.findOneAndDelete({ _id: id, userId });
     if (!list) throw new NotFoundException('Lista no encontrada');
     await this.tasks.deleteMany({ listId: list._id });
   }
 
   // ---------- Tareas ----------
 
-  findTasks() {
-    return this.tasks.find().sort({ position: 1, createdAt: 1 });
+  findTasks(userId: string) {
+    return this.tasks.find({ userId }).sort({ position: 1, createdAt: 1 });
   }
 
-  async createTask(dto: CreateTaskDto) {
-    if (!(await this.lists.exists({ _id: dto.listId }))) {
+  async createTask(userId: string, dto: CreateTaskDto) {
+    if (!(await this.lists.exists({ _id: dto.listId, userId }))) {
       throw new NotFoundException('Lista no encontrada');
     }
     const position = await this.tasks.countDocuments({ listId: dto.listId });
-    return this.tasks.create({ ...dto, position });
+    return this.tasks.create({ ...dto, userId, position });
   }
 
-  async updateTask(id: string, dto: UpdateTaskDto) {
-    const task = await this.tasks.findByIdAndUpdate(id, dto, { returnDocument: 'after' });
+  async updateTask(userId: string, id: string, dto: UpdateTaskDto) {
+    if (dto.listId && !(await this.lists.exists({ _id: dto.listId, userId }))) {
+      throw new NotFoundException('Lista no encontrada');
+    }
+    const task = await this.tasks.findOneAndUpdate({ _id: id, userId }, dto, { returnDocument: 'after' });
     if (!task) throw new NotFoundException('Tarea no encontrada');
     return task;
   }
 
-  async removeTask(id: string) {
-    const task = await this.tasks.findByIdAndDelete(id);
+  async removeTask(userId: string, id: string) {
+    const task = await this.tasks.findOneAndDelete({ _id: id, userId });
     if (!task) throw new NotFoundException('Tarea no encontrada');
   }
 
   /** Guarda en una sola operación el nuevo orden/columna de varias tarjetas. */
-  async reorder({ items }: ReorderTasksDto) {
+  async reorder(userId: string, { items }: ReorderTasksDto) {
     if (items.length === 0) return;
+    // Solo se puede mover a listas propias.
+    const listIds = [...new Set(items.map((item) => item.listId))];
+    if ((await this.lists.countDocuments({ _id: { $in: listIds }, userId })) !== listIds.length) {
+      throw new NotFoundException('Lista no encontrada');
+    }
     await this.tasks.bulkWrite(
       items.map((item) => ({
         updateOne: {
-          filter: { _id: item.id },
+          filter: { _id: item.id, userId: new Types.ObjectId(userId) },
           update: { $set: { listId: new Types.ObjectId(item.listId), position: item.position } },
         },
       })),

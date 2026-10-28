@@ -9,6 +9,10 @@ export type MovementType = (typeof MOVEMENT_TYPES)[number];
 
 @Schema(baseSchemaOptions)
 export class Category {
+  /** Dueño: cada usuario ve solo lo suyo. */
+  @Prop({ type: SchemaTypes.ObjectId, ref: 'User', required: true, index: true })
+  userId: Types.ObjectId;
+
   @Prop({ required: true, trim: true })
   name: string;
 
@@ -29,6 +33,10 @@ export const CategorySchema = SchemaFactory.createForClass(Category);
 
 @Schema(baseSchemaOptions)
 export class Transaction {
+  /** Dueño: cada usuario ve solo lo suyo. */
+  @Prop({ type: SchemaTypes.ObjectId, ref: 'User', required: true, index: true })
+  userId: Types.ObjectId;
+
   @Prop({ type: String, enum: MOVEMENT_TYPES, required: true })
   type: MovementType;
 
@@ -56,6 +64,10 @@ export const TransactionSchema = SchemaFactory.createForClass(Transaction);
 
 @Schema(baseSchemaOptions)
 export class Recurring {
+  /** Dueño: cada usuario ve solo lo suyo. */
+  @Prop({ type: SchemaTypes.ObjectId, ref: 'User', required: true, index: true })
+  userId: Types.ObjectId;
+
   @Prop({ type: String, enum: MOVEMENT_TYPES, required: true })
   type: MovementType;
 
@@ -82,3 +94,22 @@ export class Recurring {
 
 export type RecurringDocument = HydratedDocument<Recurring>;
 export const RecurringSchema = SchemaFactory.createForClass(Recurring);
+
+// ---------- Pase de saldo entre meses ----------
+
+/** Lo que eligió el usuario al empezar un mes: si arrastra el saldo del anterior. */
+@Schema(baseSchemaOptions)
+export class MonthCarry {
+  /** Dueño: cada usuario ve solo lo suyo. */
+  @Prop({ type: SchemaTypes.ObjectId, ref: 'User', required: true, index: true })
+  userId: Types.ObjectId;
+
+  @Prop({ required: true }) // 'YYYY-MM': el mes que recibe (o no) el saldo
+  month: string;
+
+  @Prop({ required: true })
+  carry: boolean;
+}
+
+export const MonthCarrySchema = SchemaFactory.createForClass(MonthCarry);
+MonthCarrySchema.index({ userId: 1, month: 1 }, { unique: true });

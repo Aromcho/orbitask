@@ -6,6 +6,8 @@ import { RecurringJob } from './recurring.job.js';
 import {
   Category,
   CategorySchema,
+  MonthCarry,
+  MonthCarrySchema,
   Recurring,
   RecurringSchema,
   Transaction,
@@ -18,6 +20,7 @@ import {
       { name: Category.name, schema: CategorySchema },
       { name: Transaction.name, schema: TransactionSchema },
       { name: Recurring.name, schema: RecurringSchema },
+      { name: MonthCarry.name, schema: MonthCarrySchema },
     ]),
   ],
   controllers: [FinanceController],

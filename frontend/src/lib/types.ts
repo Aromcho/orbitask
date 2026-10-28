@@ -4,6 +4,8 @@ export interface User {
   id: string;
   email: string;
   name: string;
+  isAdmin: boolean;
+  createdAt?: string;
 }
 
 interface Timestamps {
@@ -105,7 +107,16 @@ export interface FinanceSummary {
   month: string;
   income: number;
   expense: number;
+  /** Balance del mes (ingresos − gastos). */
   balance: number;
+  /** Lo que viene de los meses anteriores. */
+  carryOver: number;
+  /** Arrastre + balance del mes: lo que tenés. */
+  available: number;
+  /** Lo que quedó disponible al cerrar el mes anterior. */
+  previousAvailable: number;
+  /** Si eligió pasar el saldo a este mes (null = todavía no respondió). */
+  carryDecision: boolean | null;
   byCategory: { categoryId: string; name: string; color: string; emoji: string; total: number }[];
   daily: { date: string; income: number; expense: number }[];
 }

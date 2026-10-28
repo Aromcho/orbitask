@@ -1,5 +1,7 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Put } from '@nestjs/common';
 import { ParseObjectIdPipe } from '@nestjs/mongoose';
+import { CurrentUser } from '../auth/current-user.decorator.js';
+import type { JwtPayload } from '../auth/auth.types.js';
 import { CreateTaskListDto, UpdateTaskListDto } from './dto/task-list.dto.js';
 import { CreateTaskDto, ReorderTasksDto, UpdateTaskDto } from './dto/task.dto.js';
 import { TasksService } from './tasks.service.js';
@@ -9,50 +11,50 @@ export class TasksController {
   constructor(private readonly tasks: TasksService) {}
 
   @Get('task-lists')
-  findLists() {
-    return this.tasks.findLists();
+  findLists(@CurrentUser() user: JwtPayload) {
+    return this.tasks.findLists(user.sub);
   }
 
   @Post('task-lists')
-  createList(@Body() dto: CreateTaskListDto) {
-    return this.tasks.createList(dto);
+  createList(@CurrentUser() user: JwtPayload, @Body() dto: CreateTaskListDto) {
+    return this.tasks.createList(user.sub, dto);
   }
 
   @Patch('task-lists/:id')
-  updateList(@Param('id', ParseObjectIdPipe) id: string, @Body() dto: UpdateTaskListDto) {
-    return this.tasks.updateList(id, dto);
+  updateList(@CurrentUser() user: JwtPayload, @Param('id', ParseObjectIdPipe) id: string, @Body() dto: UpdateTaskListDto) {
+    return this.tasks.updateList(user.sub, id, dto);
   }
 
   @Delete('task-lists/:id')
   @HttpCode(204)
-  removeList(@Param('id', ParseObjectIdPipe) id: string) {
-    return this.tasks.removeList(id);
+  removeList(@CurrentUser() user: JwtPayload, @Param('id', ParseObjectIdPipe) id: string) {
+    return this.tasks.removeList(user.sub, id);
   }
 
   @Get('tasks')
-  findTasks() {
-    return this.tasks.findTasks();
+  findTasks(@CurrentUser() user: JwtPayload) {
+    return this.tasks.findTasks(user.sub);
   }
 
   @Post('tasks')
-  createTask(@Body() dto: CreateTaskDto) {
-    return this.tasks.createTask(dto);
+  createTask(@CurrentUser() user: JwtPayload, @Body() dto: CreateTaskDto) {
+    return this.tasks.createTask(user.sub, dto);
   }
 
   @Put('tasks/reorder')
   @HttpCode(204)
-  reorder(@Body() dto: ReorderTasksDto) {
-    return this.tasks.reorder(dto);
+  reorder(@CurrentUser() user: JwtPayload, @Body() dto: ReorderTasksDto) {
+    return this.tasks.reorder(user.sub, dto);
   }
 
   @Patch('tasks/:id')
-  updateTask(@Param('id', ParseObjectIdPipe) id: string, @Body() dto: UpdateTaskDto) {
-    return this.tasks.updateTask(id, dto);
+  updateTask(@CurrentUser() user: JwtPayload, @Param('id', ParseObjectIdPipe) id: string, @Body() dto: UpdateTaskDto) {
+    return this.tasks.updateTask(user.sub, id, dto);
   }
 
   @Delete('tasks/:id')
   @HttpCode(204)
-  removeTask(@Param('id', ParseObjectIdPipe) id: string) {
-    return this.tasks.removeTask(id);
+  removeTask(@CurrentUser() user: JwtPayload, @Param('id', ParseObjectIdPipe) id: string) {
+    return this.tasks.removeTask(user.sub, id);
   }
 }

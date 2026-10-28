@@ -22,10 +22,11 @@ export function MonthHero({ summary, isCurrentMonth }: MonthHeroProps) {
     <Card className="gap-5">
       <CardContent className="flex flex-col gap-4">
         <div>
-          <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Balance del mes</p>
-          <p className={cn("font-heading text-[2.4rem] leading-tight font-semibold tabular", summary.balance < 0 ? "text-expense" : "text-income")}>
-            {formatMoney(summary.balance)}
+          <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Disponible</p>
+          <p className={cn("font-heading text-[2.4rem] leading-tight font-semibold tabular", summary.available < 0 ? "text-expense" : "text-income")}>
+            {formatMoney(summary.available)}
           </p>
+          <CarryOverLine summary={summary} />
         </div>
         <div className="grid grid-cols-2 gap-2">
           <div className="rounded-xl bg-income/12 px-3 py-2">
@@ -45,6 +46,19 @@ export function MonthHero({ summary, isCurrentMonth }: MonthHeroProps) {
         {summary.byCategory.length > 0 && <CategoryShare items={summary.byCategory} total={summary.expense} />}
       </CardContent>
     </Card>
+  );
+}
+
+/** "Del mes anterior +X · Este mes +Y" (solo si hay arrastre). */
+export function CarryOverLine({ summary, className }: { summary: FinanceSummary; className?: string }) {
+  if (summary.carryOver === 0) return null;
+  const signed = (n: number) => `${n >= 0 ? "+" : "−"} ${formatMoney(Math.abs(n))}`;
+  return (
+    <p className={cn("text-sm text-muted-foreground tabular", className)}>
+      Meses anteriores <span className={summary.carryOver < 0 ? "text-expense" : "text-foreground"}>{signed(summary.carryOver)}</span>
+      {" · "}
+      Este mes <span className={summary.balance < 0 ? "text-expense" : "text-foreground"}>{signed(summary.balance)}</span>
+    </p>
   );
 }
 

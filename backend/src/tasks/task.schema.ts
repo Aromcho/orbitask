@@ -8,6 +8,10 @@ export type Priority = (typeof PRIORITIES)[number];
 
 @Schema(baseSchemaOptions)
 export class Task {
+  /** Dueño: cada usuario ve solo lo suyo. */
+  @Prop({ type: SchemaTypes.ObjectId, ref: 'User', required: true, index: true })
+  userId: Types.ObjectId;
+
   @Prop({ type: SchemaTypes.ObjectId, ref: TaskList.name, required: true, index: true })
   listId: Types.ObjectId;
 

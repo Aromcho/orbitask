@@ -70,6 +70,14 @@ export class MonthQueryDto {
   month: string;
 }
 
+export class MonthCarryDto {
+  @IsMonth()
+  month: string;
+
+  @IsBoolean()
+  carry: boolean;
+}
+
 // ---------- Recurrentes ----------
 
 export class CreateRecurringDto {

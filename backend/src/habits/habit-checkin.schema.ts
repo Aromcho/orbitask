@@ -6,6 +6,10 @@ import { Habit } from './habit.schema.js';
 /** Un documento por cada día que cumpliste un hábito. */
 @Schema(baseSchemaOptions)
 export class HabitCheckin {
+  /** Dueño: cada usuario ve solo lo suyo. */
+  @Prop({ type: SchemaTypes.ObjectId, ref: 'User', required: true, index: true })
+  userId: Types.ObjectId;
+
   @Prop({ type: SchemaTypes.ObjectId, ref: Habit.name, required: true })
   habitId: Types.ObjectId;
 

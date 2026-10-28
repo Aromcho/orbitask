@@ -14,16 +14,16 @@ export class WishlistService {
     private readonly linkPreview: LinkPreviewService,
   ) {}
 
-  findAll() {
+  findAll(userId: string) {
     // Primero lo pendiente, lo más nuevo arriba.
-    return this.wishes.find().sort({ purchased: 1, createdAt: -1 });
+    return this.wishes.find({ userId }).sort({ purchased: 1, createdAt: -1 });
   }
 
   preview(url: string) {
     return this.linkPreview.fetch(url);
   }
 
-  async create(dto: CreateWishDto) {
+  async create(userId: string, dto: CreateWishDto) {
     if (!dto.url && !dto.title) {
       throw new BadRequestException('Pasá un link o un título');
     }
@@ -40,12 +40,13 @@ export class WishlistService {
     return this.wishes.create({
       ...(preview && this.fromPreview(preview)),
       ...dto,
+      userId,
       title: dto.title || preview?.title || new URL(dto.url!).hostname,
     });
   }
 
-  async update(id: string, dto: UpdateWishDto) {
-    const wish = await this.findOne(id);
+  async update(userId: string, id: string, dto: UpdateWishDto) {
+    const wish = await this.findOne(userId, id);
     if (dto.purchased !== undefined && dto.purchased !== wish.purchased) {
       wish.purchasedAt = dto.purchased ? new Date() : null;
     }
@@ -54,8 +55,8 @@ export class WishlistService {
   }
 
   /** Vuelve a leer el link (por ejemplo, si cambió el precio). */
-  async refresh(id: string) {
-    const wish = await this.findOne(id);
+  async refresh(userId: string, id: string) {
+    const wish = await this.findOne(userId, id);
     if (!wish.url) throw new BadRequestException('Este deseo no tiene link');
 
     const preview = await this.linkPreview.fetch(wish.url);
@@ -63,8 +64,8 @@ export class WishlistService {
     return wish.save();
   }
 
-  async remove(id: string) {
-    const wish = await this.wishes.findByIdAndDelete(id);
+  async remove(userId: string, id: string) {
+    const wish = await this.wishes.findOneAndDelete({ _id: id, userId });
     if (!wish) throw new NotFoundException('Deseo no encontrado');
   }
 
@@ -79,8 +80,8 @@ export class WishlistService {
     };
   }
 
-  private async findOne(id: string) {
-    const wish = await this.wishes.findById(id);
+  private async findOne(userId: string, id: string) {
+    const wish = await this.wishes.findOne({ _id: id, userId });
     if (!wish) throw new NotFoundException('Deseo no encontrado');
     return wish;
   }

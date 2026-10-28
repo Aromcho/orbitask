@@ -1,9 +1,12 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Put, Query } from '@nestjs/common';
 import { ParseObjectIdPipe } from '@nestjs/mongoose';
+import { CurrentUser } from '../auth/current-user.decorator.js';
+import type { JwtPayload } from '../auth/auth.types.js';
 import {
   CreateCategoryDto,
   CreateRecurringDto,
   CreateTransactionDto,
+  MonthCarryDto,
   MonthQueryDto,
   UpdateCategoryDto,
   UpdateRecurringDto,
@@ -18,81 +21,87 @@ export class FinanceController {
   // ---------- Categorías ----------
 
   @Get('categories')
-  findCategories() {
-    return this.finance.findCategories();
+  findCategories(@CurrentUser() user: JwtPayload) {
+    return this.finance.findCategories(user.sub);
   }
 
   @Post('categories')
-  createCategory(@Body() dto: CreateCategoryDto) {
-    return this.finance.createCategory(dto);
+  createCategory(@CurrentUser() user: JwtPayload, @Body() dto: CreateCategoryDto) {
+    return this.finance.createCategory(user.sub, dto);
   }
 
   @Patch('categories/:id')
-  updateCategory(@Param('id', ParseObjectIdPipe) id: string, @Body() dto: UpdateCategoryDto) {
-    return this.finance.updateCategory(id, dto);
+  updateCategory(@CurrentUser() user: JwtPayload, @Param('id', ParseObjectIdPipe) id: string, @Body() dto: UpdateCategoryDto) {
+    return this.finance.updateCategory(user.sub, id, dto);
   }
 
   @Delete('categories/:id')
   @HttpCode(204)
-  removeCategory(@Param('id', ParseObjectIdPipe) id: string) {
-    return this.finance.removeCategory(id);
+  removeCategory(@CurrentUser() user: JwtPayload, @Param('id', ParseObjectIdPipe) id: string) {
+    return this.finance.removeCategory(user.sub, id);
   }
 
   // ---------- Movimientos ----------
 
   @Get('transactions')
-  findTransactions(@Query() { month }: MonthQueryDto) {
-    return this.finance.findTransactions(month);
+  findTransactions(@CurrentUser() user: JwtPayload, @Query() { month }: MonthQueryDto) {
+    return this.finance.findTransactions(user.sub, month);
   }
 
   @Post('transactions')
-  createTransaction(@Body() dto: CreateTransactionDto) {
-    return this.finance.createTransaction(dto);
+  createTransaction(@CurrentUser() user: JwtPayload, @Body() dto: CreateTransactionDto) {
+    return this.finance.createTransaction(user.sub, dto);
   }
 
   @Patch('transactions/:id')
-  updateTransaction(@Param('id', ParseObjectIdPipe) id: string, @Body() dto: UpdateTransactionDto) {
-    return this.finance.updateTransaction(id, dto);
+  updateTransaction(@CurrentUser() user: JwtPayload, @Param('id', ParseObjectIdPipe) id: string, @Body() dto: UpdateTransactionDto) {
+    return this.finance.updateTransaction(user.sub, id, dto);
   }
 
   @Delete('transactions/:id')
   @HttpCode(204)
-  removeTransaction(@Param('id', ParseObjectIdPipe) id: string) {
-    return this.finance.removeTransaction(id);
+  removeTransaction(@CurrentUser() user: JwtPayload, @Param('id', ParseObjectIdPipe) id: string) {
+    return this.finance.removeTransaction(user.sub, id);
   }
 
   @Get('summary')
-  summary(@Query() { month }: MonthQueryDto) {
-    return this.finance.summary(month);
+  summary(@CurrentUser() user: JwtPayload, @Query() { month }: MonthQueryDto) {
+    return this.finance.summary(user.sub, month);
+  }
+
+  /** Al empezar un mes: si pasa (o no) el saldo del mes anterior. */
+  @Put('carry')
+  setCarry(@CurrentUser() user: JwtPayload, @Body() dto: MonthCarryDto) {
+    return this.finance.setCarry(user.sub, dto);
   }
 
   // ---------- Recurrentes ----------
 
   @Get('recurring')
-  findRecurring() {
-    return this.finance.findRecurring();
+  findRecurring(@CurrentUser() user: JwtPayload) {
+    return this.finance.findRecurring(user.sub);
   }
 
   @Post('recurring')
-  createRecurring(@Body() dto: CreateRecurringDto) {
-    return this.finance.createRecurring(dto);
+  createRecurring(@CurrentUser() user: JwtPayload, @Body() dto: CreateRecurringDto) {
+    return this.finance.createRecurring(user.sub, dto);
   }
 
   /** Corre a mano lo mismo que hace el cron de las 06:00 (útil para probar). */
   @Post('recurring/run')
   @HttpCode(200)
-  runRecurring() {
-    return this.finance.runRecurring();
+  runRecurring(@CurrentUser() user: JwtPayload) {
+    return this.finance.runRecurring(user.sub);
   }
 
   @Patch('recurring/:id')
-  updateRecurring(@Param('id', ParseObjectIdPipe) id: string, @Body() dto: UpdateRecurringDto) {
-    return this.finance.updateRecurring(id, dto);
+  updateRecurring(@CurrentUser() user: JwtPayload, @Param('id', ParseObjectIdPipe) id: string, @Body() dto: UpdateRecurringDto) {
+    return this.finance.updateRecurring(user.sub, id, dto);
   }
 
   @Delete('recurring/:id')
   @HttpCode(204)
-  removeRecurring(@Param('id', ParseObjectIdPipe) id: string) {
-    return this.finance.removeRecurring(id);
+  removeRecurring(@CurrentUser() user: JwtPayload, @Param('id', ParseObjectIdPipe) id: string) {
+    return this.finance.removeRecurring(user.sub, id);
   }
 }

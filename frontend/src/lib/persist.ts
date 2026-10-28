@@ -5,7 +5,7 @@ import { dehydrate, hydrate, type QueryClient } from "@tanstack/react-query";
  * se vea lo último al instante mientras se refresca desde el backend.
  * Se borra al cerrar sesión (y cuando vence la sesión).
  */
-const CACHE_KEY = "orbitask-cache-v1";
+const CACHE_KEY = "orbitask-cache-v3";
 const MAX_AGE_MS = 1000 * 60 * 60 * 24 * 3; // 3 días
 
 export function restoreCache(queryClient: QueryClient) {

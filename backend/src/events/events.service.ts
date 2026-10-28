@@ -9,19 +9,19 @@ export class EventsService {
   constructor(@InjectModel(CalendarEvent.name) private readonly events: Model<CalendarEvent>) {}
 
   /** Eventos que se superponen con el rango [from, to). */
-  findInRange({ from, to }: EventsRangeQueryDto) {
+  findInRange(userId: string, { from, to }: EventsRangeQueryDto) {
     return this.events
-      .find({ start: { $lt: new Date(to) }, end: { $gt: new Date(from) } })
+      .find({ userId, start: { $lt: new Date(to) }, end: { $gt: new Date(from) } })
       .sort({ start: 1 });
   }
 
-  create(dto: CreateEventDto) {
+  create(userId: string, dto: CreateEventDto) {
     this.assertValidRange(dto.start, dto.end);
-    return this.events.create(dto);
+    return this.events.create({ ...dto, userId });
   }
 
-  async update(id: string, dto: UpdateEventDto) {
-    const event = await this.events.findById(id);
+  async update(userId: string, id: string, dto: UpdateEventDto) {
+    const event = await this.events.findOne({ _id: id, userId });
     if (!event) throw new NotFoundException('Evento no encontrado');
 
     this.assertValidRange(dto.start ?? event.start, dto.end ?? event.end);
@@ -33,8 +33,8 @@ export class EventsService {
     return event.save();
   }
 
-  async remove(id: string) {
-    const event = await this.events.findByIdAndDelete(id);
+  async remove(userId: string, id: string) {
+    const event = await this.events.findOneAndDelete({ _id: id, userId });
     if (!event) throw new NotFoundException('Evento no encontrado');
   }
 

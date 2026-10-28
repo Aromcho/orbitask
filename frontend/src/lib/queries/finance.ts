@@ -103,3 +103,9 @@ export function useRunRecurring() {
     invalidate: [RECURRING_KEY, ...MONEY_KEYS],
   });
 }
+
+export function useSetCarry() {
+  return useApiMutation((body: { month: string; carry: boolean }) => api("/finance/carry", { method: "PUT", body }), {
+    invalidate: MONEY_KEYS,
+  });
+}

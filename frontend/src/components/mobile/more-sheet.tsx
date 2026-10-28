@@ -1,11 +1,12 @@
 "use client";
 
-import { ChevronRightIcon, FlameIcon, GiftIcon, ImageIcon, LogOutIcon, MoonIcon, SmartphoneIcon, WalletIcon } from "lucide-react";
+import { ChevronRightIcon, FlameIcon, GiftIcon, ImageIcon, KeyRoundIcon, LogOutIcon, MoonIcon, SmartphoneIcon, UsersIcon, WalletIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
 import { useState, useSyncExternalStore } from "react";
 import { BackgroundPicker } from "@/components/background-picker";
+import { ChangePasswordDialog } from "@/components/change-password-dialog";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
@@ -36,6 +37,7 @@ function MoreContent({ onNavigate }: { onNavigate: () => void }) {
   const { resolvedTheme, setTheme } = useTheme();
   const [background] = useBackground();
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [passwordOpen, setPasswordOpen] = useState(false);
   const initials = (me?.name ?? "?").slice(0, 2).toUpperCase();
   // Entrar a Hábitos, Finanzas o Deseos desde una pestaña es "ir hacia adelante"
   const transitionTypes = tabIndex(pathname) < 3 ? ["tab-forward"] : undefined;
@@ -73,6 +75,22 @@ function MoreContent({ onNavigate }: { onNavigate: () => void }) {
           </label>
         </li>
         <li className="border-t border-foreground/[0.06]">
+          <button type="button" onClick={() => setPasswordOpen(true)} className="flex min-h-13 w-full items-center gap-3 px-4 text-left active:bg-foreground/5">
+            <KeyRoundIcon className="size-5 text-muted-foreground" />
+            <span className="flex-1 text-sm">Cambiar contraseña</span>
+            <ChevronRightIcon className="size-4 text-muted-foreground" />
+          </button>
+        </li>
+        {me?.isAdmin && (
+          <li className="border-t border-foreground/[0.06]">
+            <Link href="/usuarios" onClick={onNavigate} className="flex min-h-13 w-full items-center gap-3 px-4 text-left active:bg-foreground/5">
+              <UsersIcon className="size-5 text-muted-foreground" />
+              <span className="flex-1 text-sm">Usuarios</span>
+              <ChevronRightIcon className="size-4 text-muted-foreground" />
+            </Link>
+          </li>
+        )}
+        <li className="border-t border-foreground/[0.06]">
           <button type="button" onClick={() => setPickerOpen(true)} className="flex min-h-13 w-full items-center gap-3 px-4 text-left active:bg-foreground/5">
             <ImageIcon className="size-5 text-muted-foreground" />
             <span className="flex-1 text-sm">Fondo de pantalla</span>
@@ -90,6 +108,7 @@ function MoreContent({ onNavigate }: { onNavigate: () => void }) {
       </ul>
 
       <BackgroundPicker open={pickerOpen} onOpenChange={setPickerOpen} />
+      <ChangePasswordDialog open={passwordOpen} onOpenChange={setPasswordOpen} />
     </>
   );
 }
@@ -139,7 +158,7 @@ function HabitsStat() {
 function MoneyStat() {
   const { data: summary } = useSummary(toMonth(new Date()));
   if (!summary) return "…";
-  return `${summary.balance >= 0 ? "+" : ""}${formatMoney(summary.balance)}`;
+  return `${summary.available >= 0 ? "+" : ""}${formatMoney(summary.available)}`;
 }
 
 function WishStat() {

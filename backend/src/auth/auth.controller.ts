@@ -6,6 +6,7 @@ import { AuthService } from './auth.service.js';
 import { AUTH_COOKIE, type JwtPayload } from './auth.types.js';
 import { CurrentUser } from './current-user.decorator.js';
 import { LoginDto } from './dto/login.dto.js';
+import { ChangePasswordDto } from './dto/users.dto.js';
 
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -40,5 +41,11 @@ export class AuthController {
   @Get('me')
   me(@CurrentUser() user: JwtPayload) {
     return this.auth.me(user.sub);
+  }
+
+  @Post('password')
+  @HttpCode(204)
+  async changePassword(@CurrentUser() user: JwtPayload, @Body() dto: ChangePasswordDto) {
+    await this.auth.changePassword(user.sub, dto.currentPassword, dto.newPassword);
   }
 }

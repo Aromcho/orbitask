@@ -7,10 +7,12 @@ import {
   GiftIcon,
   HouseIcon,
   ImageIcon,
+  KeyRoundIcon,
   LogOutIcon,
   MoonIcon,
   SquareKanbanIcon,
   SunIcon,
+  UsersIcon,
   WalletIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -18,6 +20,7 @@ import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
 import { useState } from "react";
 import { BackgroundPicker } from "@/components/background-picker";
+import { ChangePasswordDialog } from "@/components/change-password-dialog";
 import { Logo } from "@/components/logo";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -52,9 +55,14 @@ export const NAV = [
   { href: "/deseos", label: "Deseos", icon: GiftIcon },
 ];
 
+/** Solo lo ve el admin. */
+export const ADMIN_NAV = { href: "/usuarios", label: "Usuarios", icon: UsersIcon };
+
 export function AppSidebar() {
   const pathname = usePathname();
   const { setOpenMobile } = useSidebar();
+  const { data: me } = useMe();
+  const nav = me?.isAdmin ? [...NAV, ADMIN_NAV] : NAV;
 
   return (
     <Sidebar variant="floating" collapsible="icon">
@@ -69,7 +77,7 @@ export function AppSidebar() {
           <SidebarGroupLabel>Mi órbita</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu className="gap-1">
-              {NAV.map((item) => {
+              {nav.map((item) => {
                 const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
                 return (
                   <SidebarMenuItem key={item.href}>
@@ -105,6 +113,7 @@ function UserMenu() {
   const isDark = resolvedTheme === "dark";
   const initials = (me?.name ?? "?").slice(0, 2).toUpperCase();
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [passwordOpen, setPasswordOpen] = useState(false);
 
   return (
     <SidebarMenu>
@@ -128,6 +137,10 @@ function UserMenu() {
               {isDark ? <SunIcon /> : <MoonIcon />}
               {isDark ? "Modo claro" : "Modo oscuro"}
             </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => setPasswordOpen(true)}>
+              <KeyRoundIcon />
+              Cambiar contraseña
+            </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => setPickerOpen(true)}>
               <ImageIcon />
               Fondo de pantalla
@@ -140,6 +153,7 @@ function UserMenu() {
           </DropdownMenuContent>
         </DropdownMenu>
         <BackgroundPicker open={pickerOpen} onOpenChange={setPickerOpen} />
+        <ChangePasswordDialog open={passwordOpen} onOpenChange={setPasswordOpen} />
       </SidebarMenuItem>
     </SidebarMenu>
   );
