@@ -7,6 +7,7 @@ import { EventsModule } from './events/events.module.js';
 import { FinanceModule } from './finance/finance.module.js';
 import { HabitsModule } from './habits/habits.module.js';
 import { HealthModule } from './health/health.module.js';
+import { InternalModule } from './internal/internal.module.js';
 import { ObserveModule } from './observe.js';
 import { TasksModule } from './tasks/tasks.module.js';
 import { WishlistModule } from './wishlist/wishlist.module.js';
@@ -41,6 +42,7 @@ import { WishlistModule } from './wishlist/wishlist.module.js';
     HabitsModule,
     FinanceModule,
     WishlistModule,
+    InternalModule,
   ],
 })
 export class AppModule {}
